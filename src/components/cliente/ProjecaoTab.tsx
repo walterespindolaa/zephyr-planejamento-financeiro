@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import { Plus, Trash2, Mountain } from "lucide-react";
 import { toast } from "sonner";
+import MoneyInput from "@/components/common/MoneyInput";
 
 interface EventoRow {
   id: string;
@@ -235,8 +236,14 @@ export default function ProjecaoTab({ clientId }: { clientId: string }) {
                   onBlur={(e) => updateEvento(ev.id, { name: e.target.value })}
                 />
                 <LabeledNum label="Ano" value={ev.ano} onCommit={(v) => updateEvento(ev.id, { ano: v })} w="w-24" />
-                <LabeledNum label="Valor (R$)" value={ev.impacto_valor} onCommit={(v) => updateEvento(ev.id, { impacto_valor: v })} />
-                <LabeledNum label="Mensal (R$)" value={ev.impacto_mensal} onCommit={(v) => updateEvento(ev.id, { impacto_mensal: v })} />
+                <div className="w-36">
+                  <span className="mb-0.5 block text-[10px] text-muted-foreground">Valor (R$)</span>
+                  <MoneyInput value={ev.impacto_valor} onCommit={(v) => updateEvento(ev.id, { impacto_valor: v })} />
+                </div>
+                <div className="w-36">
+                  <span className="mb-0.5 block text-[10px] text-muted-foreground">Mensal (R$)</span>
+                  <MoneyInput value={ev.impacto_mensal} onCommit={(v) => updateEvento(ev.id, { impacto_mensal: v })} />
+                </div>
                 <LabeledNum label="Meses" value={ev.duracao_meses} onCommit={(v) => updateEvento(ev.id, { duracao_meses: v })} w="w-20" />
                 <button onClick={() => delEvento(ev.id)} className="ml-auto">
                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
@@ -273,14 +280,15 @@ function LabeledNum({
   onCommit: (v: number) => void;
   w?: string;
 }) {
-  const [local, setLocal] = useState(String(value ?? 0));
-  useEffect(() => setLocal(String(value ?? 0)), [value]);
+  const [local, setLocal] = useState(value ? String(value) : "");
+  useEffect(() => setLocal(value ? String(value) : ""), [value]);
   return (
     <div className={w}>
       <span className="mb-0.5 block text-[10px] text-muted-foreground">{label}</span>
       <Input
         className="h-9"
         type="number"
+        placeholder="0"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={() => onCommit(local === "" ? 0 : Number(local))}

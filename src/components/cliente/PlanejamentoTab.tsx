@@ -1,5 +1,6 @@
 import CrudList from "./CrudList";
 import AposentadoriaForm from "./AposentadoriaForm";
+import ObjetivosManager from "./ObjetivosManager";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function PlanejamentoTab({ clientId }: { clientId: string }) {
@@ -12,20 +13,8 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
         <AposentadoriaForm clientId={clientId} />
       </Section>
 
-      <Section title="Objetivos de vida" desc="Cada objetivo: valor, prazo e aporte mensal.">
-        <CrudList
-          clientId={clientId}
-          table="client_objetivos"
-          addLabel="Adicionar objetivo"
-          defaults={{ nome: "", valor_objetivo: 0, valor_acumulado: 0, aporte_mensal: 0 }}
-          fields={[
-            { key: "nome", label: "Objetivo", type: "text", grow: 2, placeholder: "Casa na praia…" },
-            { key: "valor_objetivo", label: "Valor (R$)", type: "money" },
-            { key: "valor_acumulado", label: "Acumulado (R$)", type: "money" },
-            { key: "aporte_mensal", label: "Aporte/mês (R$)", type: "money" },
-            { key: "data_objetivo", label: "Prazo", type: "date" },
-          ]}
-        />
+      <Section title="Objetivos de vida" desc="Tipos prontos, aporte automático sugerido e progresso.">
+        <ObjetivosManager clientId={clientId} />
       </Section>
 
       <Section
