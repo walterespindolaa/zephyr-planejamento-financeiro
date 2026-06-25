@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus, Copy, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import BrandingUpload from "@/components/equipe/BrandingUpload";
 
 interface RosterRow {
   id: string;
@@ -47,6 +48,7 @@ export default function Equipe() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("assessor");
   const [saving, setSaving] = useState(false);
+  const [cred, setCred] = useState<{ email: string; senha: string } | null>(null);
 
   const addMember = async () => {
     if (!nome.trim() || !email.trim()) {
@@ -54,23 +56,32 @@ export default function Equipe() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("team_roster").insert({
-      full_name: nome.trim(),
-      email: email.trim().toLowerCase(),
-      role,
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { nome: nome.trim(), email: email.trim().toLowerCase(), role },
     });
     setSaving(false);
-    if (error) {
-      toast.error("Erro ao adicionar", { description: error.message });
+    if (error || (data as any)?.error) {
+      const msg = (data as any)?.error || error?.message || "Erro desconhecido";
+      toast.error("Não foi possível criar o usuário", { description: msg });
       return;
     }
+    setCred({ email: (data as any).email, senha: (data as any).tempPassword });
     setNome("");
     setEmail("");
     setRole("assessor");
     roster.refetch();
-    toast.success("Membro adicionado ao roster", {
-      description: "Agora crie o usuário no Supabase Auth com o mesmo e-mail.",
+    qc.invalidateQueries({ queryKey: ["team"] });
+    toast.success("Usuário criado no Supabase", {
+      description: "Copie a senha temporária e envie para a pessoa.",
     });
+  };
+
+  const copyCred = () => {
+    if (!cred) return;
+    navigator.clipboard.writeText(
+      `Acesso Zephyr\nE-mail: ${cred.email}\nSenha temporária: ${cred.senha}\n(troque a senha no primeiro acesso)`
+    );
+    toast.success("Credenciais copiadas");
   };
 
   const updateRole = async (id: string, newRole: UserRole) => {
@@ -93,8 +104,8 @@ export default function Equipe() {
       <div>
         <h1 className="text-2xl font-bold">Equipe</h1>
         <p className="text-sm text-muted-foreground">
-          Adicione os membros aqui (e-mail + papel). Depois crie o usuário no Supabase Auth
-          com o <strong>mesmo e-mail</strong> — no primeiro login o papel é aplicado.
+          Adicione um membro (nome + e-mail + papel) e o sistema cria o acesso no Supabase com
+          uma <strong>senha temporária</strong>. A pessoa troca a senha no primeiro acesso.
         </p>
       </div>
 
@@ -135,8 +146,32 @@ export default function Equipe() {
             </div>
           </div>
           <Button onClick={addMember} disabled={saving}>
-            {saving ? "Adicionando…" : "Adicionar ao roster"}
+            {saving ? "Criando acesso…" : "Criar usuário"}
           </Button>
+
+          {cred && (
+            <div className="rounded-lg border border-success/30 bg-success/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-success">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="text-sm font-semibold">Acesso criado</span>
+              </div>
+              <p className="text-sm">
+                <span className="text-muted-foreground">E-mail:</span> {cred.email}
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Senha temporária:</span>{" "}
+                <code className="rounded bg-background px-1.5 py-0.5 font-mono">
+                  {cred.senha}
+                </code>
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Envie para a pessoa. No primeiro login ela será obrigada a trocar a senha.
+              </p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={copyCred}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copiar credenciais
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -202,6 +237,8 @@ export default function Equipe() {
           )}
         </CardContent>
       </Card>
+
+      <BrandingUpload />
 
       <p className="text-xs text-muted-foreground">
         Observação: alterar o papel aqui já vale para quem ainda não fez login. Para quem já

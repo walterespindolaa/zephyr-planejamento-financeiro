@@ -9,6 +9,7 @@ export interface Profile {
   role: UserRole;
   avatar_url: string | null;
   ativo: boolean;
+  must_change_password?: boolean;
 }
 
 export interface Client {

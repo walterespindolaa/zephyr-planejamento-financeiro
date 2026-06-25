@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Login = lazy(() => import("@/pages/Login"));
+const TrocarSenha = lazy(() => import("@/pages/TrocarSenha"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
@@ -35,6 +36,14 @@ export default function App() {
             <Suspense fallback={<Loader />}>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route
+                  path="/trocar-senha"
+                  element={
+                    <ProtectedRoute allowPasswordChange>
+                      <TrocarSenha />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/"
                   element={

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ClienteCRM from "@/components/cliente/ClienteCRM";
 import OrganizacaoTab from "@/components/cliente/OrganizacaoTab";
 import PlanejamentoTab from "@/components/cliente/PlanejamentoTab";
+import RelatorioTab from "@/components/cliente/RelatorioTab";
 import { useMemo } from "react";
 
 export default function ClienteDetalhe() {
@@ -82,10 +83,7 @@ export default function ClienteDetalhe() {
           />
         </TabsContent>
         <TabsContent value="relatorio">
-          <Placeholder
-            title="Relatório editável + PDF Zephyr"
-            desc="Geração via IA (Claude), edição rich-text (negrito, itálico, tópicos, fontes), salvar no cliente e exportar PDF com capa e contracapa Zephyr."
-          />
+          <RelatorioTab client={client} />
         </TabsContent>
       </Tabs>
     </div>
