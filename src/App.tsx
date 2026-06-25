@@ -12,6 +12,7 @@ const TrocarSenha = lazy(() => import("@/pages/TrocarSenha"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
+const Acompanhamentos = lazy(() => import("@/pages/Acompanhamentos"));
 const Equipe = lazy(() => import("@/pages/Equipe"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -55,6 +56,7 @@ export default function App() {
                   <Route index element={<Dashboard />} />
                   <Route path="clientes/novo" element={<NovoCliente />} />
                   <Route path="clientes/:id" element={<ClienteDetalhe />} />
+                  <Route path="acompanhamentos" element={<Acompanhamentos />} />
                   <Route
                     path="equipe"
                     element={
