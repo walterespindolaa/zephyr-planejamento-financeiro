@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import MoneyInput from "@/components/common/MoneyInput";
 
 export type FieldType = "text" | "number" | "money" | "date" | "bool" | "select";
 
@@ -164,6 +165,15 @@ function FieldInput({
           onCheckedChange={(c) => onCommit(Boolean(c))}
         />
       </div>
+    );
+  }
+
+  if (field.type === "money") {
+    return (
+      <MoneyInput
+        value={typeof value === "number" ? value : Number(value) || 0}
+        onCommit={(v) => onCommit(v)}
+      />
     );
   }
 

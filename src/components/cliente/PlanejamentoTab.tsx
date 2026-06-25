@@ -17,7 +17,7 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           table="client_objetivos"
           addLabel="Adicionar objetivo"
-          defaults={{ valor_objetivo: 0, valor_acumulado: 0, aporte_mensal: 0 }}
+          defaults={{ nome: "", valor_objetivo: 0, valor_acumulado: 0, aporte_mensal: 0 }}
           fields={[
             { key: "nome", label: "Objetivo", type: "text", grow: 2, placeholder: "Casa na praia…" },
             { key: "valor_objetivo", label: "Valor (R$)", type: "money" },
@@ -36,7 +36,7 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           table="client_investimentos"
           addLabel="Adicionar investimento"
-          defaults={{ valor_atual: 0, is_reserva_emergencia: false }}
+          defaults={{ nome: "", valor_atual: 0, is_reserva_emergencia: false }}
           fields={[
             { key: "nome", label: "Nome", type: "text", grow: 2, placeholder: "Tesouro, FII…" },
             {
@@ -66,7 +66,7 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           table="client_bens"
           addLabel="Adicionar bem"
-          defaults={{ valor: 0, divida_vinculada: 0, gera_renda: false, valor_renda: 0 }}
+          defaults={{ nome: "", valor: 0, divida_vinculada: 0, gera_renda: false, valor_renda: 0 }}
           fields={[
             { key: "nome", label: "Nome", type: "text", grow: 2, placeholder: "Apartamento…" },
             {
@@ -92,6 +92,7 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           table="client_dependentes"
           addLabel="Adicionar dependente"
+          defaults={{ nome: "" }}
           fields={[
             { key: "nome", label: "Nome", type: "text", grow: 2 },
             { key: "parentesco", label: "Parentesco", type: "text", placeholder: "Filho(a)…" },
