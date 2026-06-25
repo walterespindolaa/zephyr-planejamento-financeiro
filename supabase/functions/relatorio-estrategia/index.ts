@@ -1,6 +1,8 @@
 // Edge Function: relatorio-estrategia
-// Reproduz a metodologia do relatório "Estratégia de Subida" (Atlas), agregando
-// os dados do cliente e gerando o texto via Claude (Anthropic). Saída em HTML.
+// Gera o relatório "Estratégia de Subida" (metodologia Atlas) via Claude.
+// modo 'principal' = relatório oficial (salvável).
+// modo 'projecao' = SIMULAÇÃO que incorpora eventos de vida + anotações da
+//   planejadora; não substitui o principal (o front trata como efêmero).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -24,19 +26,20 @@ Deno.serve(async (req) => {
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurada no Supabase." }, 500);
 
-    // Cliente com o JWT do solicitante — o RLS garante o acesso ao cliente
     const sb = createClient(SUPABASE_URL, ANON, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { clientId } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const clientId = body.clientId;
+    const modo = body.modo === "projecao" ? "projecao" : "principal";
+    const projecao = body.projecao || null;
     if (!clientId) return json({ error: "clientId obrigatório" }, 400);
 
-    // RLS: só retorna se o solicitante tem acesso
     const { data: cliente } = await sb.from("clients").select("*").eq("id", clientId).maybeSingle();
     if (!cliente) return json({ error: "Sem acesso a este cliente." }, 403);
 
-    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes] = await Promise.all([
+    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes, notesRes] = await Promise.all([
       sb.from("client_receitas").select("*").eq("client_id", clientId),
       sb.from("client_despesas").select("*").eq("client_id", clientId),
       sb.from("client_objetivos").select("*").eq("client_id", clientId),
@@ -45,6 +48,7 @@ Deno.serve(async (req) => {
       sb.from("client_aposentadoria").select("*").eq("client_id", clientId).maybeSingle(),
       sb.from("client_dependentes").select("*").eq("client_id", clientId),
       sb.from("firm_settings").select("ai_model").eq("id", 1).maybeSingle(),
+      sb.from("client_notes").select("content, pinned").eq("client_id", clientId).order("pinned", { ascending: false }).limit(20),
     ]);
 
     const receitas = recRes.data || [];
@@ -55,6 +59,7 @@ Deno.serve(async (req) => {
     const apo: any = apoRes.data || {};
     const dependentes = depRes.data || [];
     const aiModel = cfgRes.data?.ai_model || "claude-sonnet-4-6";
+    const notes = notesRes.data || [];
 
     const sum = (arr: any[], f: (x: any) => number) => arr.reduce((s, x) => s + (f(x) || 0), 0);
     const mensal = (arr: any[], val: (x: any) => number) =>
@@ -69,7 +74,13 @@ Deno.serve(async (req) => {
     const rendaPassivaBens = sum(bens.filter((b) => b.gera_renda), (b) => Number(b.valor_renda || 0));
     const totalObjMensal = sum(objetivos, (o) => Number(o.aporte_mensal));
 
-    const contextData = {
+    // Anotações da planejadora (campo info + notas fixadas do CRM)
+    const anotacoes = [
+      cliente.info?.trim(),
+      ...notes.filter((n: any) => n.pinned).map((n: any) => n.content),
+    ].filter(Boolean).join("\n• ");
+
+    const contextData: Record<string, any> = {
       nome: cliente.nome,
       idade: apo.idade_atual ?? null,
       idadeAposentadoria: apo.idade_aposentadoria ?? 60,
@@ -93,33 +104,49 @@ Deno.serve(async (req) => {
       })),
       dependentes: dependentes.map((d) => ({ nome: d.nome, parentesco: d.parentesco, nascimento: d.data_nascimento })),
     };
+    if (anotacoes) contextData.anotacoesPlanejadora = anotacoes;
+    if (modo === "projecao" && projecao) contextData.projecao = projecao;
 
-    const systemPrompt = `Voce e o planejador financeiro senior da Zephyr Investimentos (padrao CFP), escrevendo a analise "Estrategia de Subida" que sera ENTREGUE AO CLIENTE ${cliente.nome}. E um documento de consultoria premium, nao um relatorio automatico.
+    let systemPrompt = `Voce e o planejador financeiro senior da Zephyr Investimentos (padrao CFP), escrevendo a analise "Estrategia de Subida" que sera ENTREGUE AO CLIENTE ${cliente.nome}. E um documento de consultoria premium, nao um relatorio automatico.
 
 OBJETIVO: avaliar a viabilidade do plano de vida do cliente — objetivos, aposentadoria, renda ideal, capacidade de poupanca e gaps — e mostrar o caminho de subida ate la.
 
 VOZ E ESTILO (o mais importante):
 - Escreva como um consultor humano conversando com o cliente: caloroso, confiante, consultivo. Use "voce".
-- TEXTO CORRIDO e fluido. Cada bloco tem 1 a 3 paragrafos que se conectam numa narrativa — NAO despeje listas de numeros nem encha de bullets. Use <ul> no maximo 1 vez no documento inteiro, e so se fizer sentido.
-- VARIE a estrutura das frases. Nada de "Sua receita e X. Sua despesa e Y. Sua capacidade e Z." Em vez disso, interprete: o que esse numero revela, o que ele permite, o que muda se agir.
-- Use a metafora da MONTANHA/SUBIDA com leveza (base, trilha, topo, ritmo de subida) — sem exagerar.
-- Cada numero citado vem acompanhado de significado (Observacao -> Interpretacao -> Consequencia -> Recomendacao), nunca solto.
+- TEXTO CORRIDO e fluido. Cada bloco tem 1 a 3 paragrafos que se conectam numa narrativa — NAO despeje listas de numeros nem encha de bullets. Use <ul> no maximo 1 vez no documento inteiro.
+- VARIE a estrutura das frases. Interprete cada numero (o que revela, o que permite, o que muda se agir) em vez de repeti-lo.
+- Use a metafora da MONTANHA/SUBIDA com leveza (base, trilha, topo, ritmo de subida).
 - Use o nome do cliente e dos dependentes naturalmente. Portugues brasileiro. Valores em R$.
 - Principios aplicados sem citar autores: juros compostos, tempo no mercado, margem de seguranca, frugalidade inteligente, vieses comportamentais.
 
-FORMATO DE SAIDA: HTML limpo, APENAS com <h2>, <h3>, <p>, <strong> (e no maximo um <ul><li>). Sem markdown, sem <html>/<body>, sem estilos inline. Os KPIs e o grafico dos 3 cenarios ja aparecem fora do texto — NAO recrie tabelas de numeros; o texto deve INTERPRETAR e dar contexto a eles.
+FORMATO DE SAIDA: HTML limpo, APENAS com <h2>, <h3>, <p>, <strong> (no maximo um <ul><li>). Sem markdown, sem <html>/<body>, sem estilos inline. Os KPIs e o grafico ja aparecem fora do texto — NAO recrie tabelas de numeros; INTERPRETE.
 
 ESTRUTURA (cada secao um <h2>, fluindo como um documento unico):
-Abertura — um paragrafo curto e pessoal, dando as boas-vindas a ${cliente.nome} a esta etapa do planejamento e ao que o documento vai mostrar.
-1. Panorama — onde ${cliente.nome} esta na jornada: estagio de vida, familia, contexto.
-2. Capacidade de Poupanca — o motor da subida. Receita ~${brl(receitaMensal)}/mes, despesa ~${brl(despesaMensal)}/mes, sobra ~${brl(capacidadePoupanca)}/mes. Interprete a folga (ou a falta dela) e o que ela viabiliza.
-3. Objetivos de Vida — cada objetivo como um marco da trilha (valor, prazo, esforco). Total de aportes hoje: ${brl(totalObjMensal)}/mes.
-4. Colchao de Seguranca — a corda de seguranca: reserva ideal (6-12 meses de custo) vs. ${brl(reservaEmergencia)} atuais.
-5. Aposentadoria — o topo. Compare os 3 cenarios (Realidade, Consumo, Viver de Renda) de forma narrativa: o que cada caminho exige e entrega.
-6. Renda Ideal e Gap — some custo de vida + colchao + objetivos + aposentadoria para chegar a renda ideal, e compare com a realidade atual. Mostre o tamanho do passo.
-7. Reflexao e Viabilidade — fechamento honesto e encorajador: o plano e viavel? Qual o proximo movimento concreto?
+Abertura — paragrafo curto e pessoal, dando boas-vindas a ${cliente.nome}.
+1. Panorama — estagio de vida, familia, contexto.
+2. Capacidade de Poupanca — o motor da subida (receita ~${brl(receitaMensal)}/mes, despesa ~${brl(despesaMensal)}/mes, sobra ~${brl(capacidadePoupanca)}/mes).
+3. Objetivos de Vida — cada objetivo como marco da trilha. Aportes hoje: ${brl(totalObjMensal)}/mes.
+4. Colchao de Seguranca — reserva ideal (6-12 meses) vs. ${brl(reservaEmergencia)} atuais.
+5. Aposentadoria — o topo. Compare os 3 cenarios (Realidade, Consumo, Viver de Renda) de forma narrativa.
+6. Renda Ideal e Gap — custo de vida + colchao + objetivos + aposentadoria vs. renda atual.
+7. Reflexao e Viabilidade — fechamento honesto e encorajador; proximo movimento concreto.`;
 
-Escreva o documento completo, do jeito que um planejador entregaria ao cliente.`;
+    if (anotacoes) {
+      systemPrompt += `
+
+ANOTACOES DA PLANEJADORA sobre a vida do cliente — incorpore esse contexto humano NATURALMENTE ao longo do texto (ele tem peso real e foi observado pela planejadora):
+"${anotacoes}"`;
+    }
+
+    if (modo === "projecao" && projecao) {
+      systemPrompt += `
+
+ESTA E UMA VERSAO COM PROJECAO DE VIDA (simulacao). Alem da estrutura acima, REESCREVA o documento considerando os eventos de vida projetados e adicione, ANTES da Reflexao (bloco 7), uma secao <h2>Impacto da Projecao de Vida</h2> que:
+- Apresente cada evento projetado e seu efeito no plano.
+- Compare o patrimonio final SEM eventos (${brl(projecao.patrimonioFinalSemEventos)}) com o patrimonio final COM os eventos (${brl(projecao.patrimonioFinalComEventos)}), interpretando a diferenca de ${brl((projecao.patrimonioFinalComEventos || 0) - (projecao.patrimonioFinalSemEventos || 0))}.
+- Deixe claro, com leveza, que e uma SIMULACAO para o cliente refletir sobre escolhas de vida — nao uma mudanca do plano oficial.
+Eventos projetados: ${JSON.stringify(projecao.eventos || [])}.`;
+    }
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

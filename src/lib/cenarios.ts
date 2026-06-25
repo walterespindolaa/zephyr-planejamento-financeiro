@@ -194,6 +194,44 @@ export function buildSummaryHtml(snapshot: Record<string, any> | null): string {
   return `<div>${kpis}${cenarios}</div>`;
 }
 
+/** Bloco visual dos eventos da projeção (para o PDF projetado). */
+export function buildProjectionHtml(projecao: {
+  patrimonioFinalSemEventos: number;
+  patrimonioFinalComEventos: number;
+  eventos: { name: string; ano: number; impactoValor: number; impactoMensal: number; duracaoMeses: number }[];
+} | null): string {
+  if (!projecao) return "";
+  const dif = (projecao.patrimonioFinalComEventos || 0) - (projecao.patrimonioFinalSemEventos || 0);
+  const cor = dif < 0 ? "#b23b32" : "#1c7a4d";
+  const linhas = (projecao.eventos || [])
+    .map(
+      (e) =>
+        `<tr>
+           <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;">${e.ano}</td>
+           <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;">${e.name}</td>
+           <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;text-align:right;">${e.impactoValor ? fmtBRL(e.impactoValor) : "—"}</td>
+           <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;text-align:right;">${e.impactoMensal ? fmtBRL(e.impactoMensal) + "/mês" : "—"}</td>
+         </tr>`
+    )
+    .join("");
+  return `
+    <h2 style="font-size:15px;color:#14633e;margin:10px 0 6px;">Projeção de Vida — Simulação</h2>
+    <p style="font-size:11px;color:#6b7d74;margin:0 0 6px;">
+      Patrimônio final sem eventos: <strong>${fmtBRL(projecao.patrimonioFinalSemEventos)}</strong> ·
+      com eventos: <strong>${fmtBRL(projecao.patrimonioFinalComEventos)}</strong> ·
+      impacto: <strong style="color:${cor};">${dif > 0 ? "+" : ""}${fmtBRL(dif)}</strong>
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+      <tr style="background:#f3f6f4;">
+        <td style="padding:5px 8px;font-size:10px;color:#6b7d74;">Ano</td>
+        <td style="padding:5px 8px;font-size:10px;color:#6b7d74;">Evento</td>
+        <td style="padding:5px 8px;font-size:10px;color:#6b7d74;text-align:right;">Valor</td>
+        <td style="padding:5px 8px;font-size:10px;color:#6b7d74;text-align:right;">Mensal</td>
+      </tr>
+      ${linhas}
+    </table>`;
+}
+
 export const fmtBRL = (n: number) =>
   "R$ " + Math.round(n || 0).toLocaleString("pt-BR");
 export const fmtBRLshort = (n: number) => {
