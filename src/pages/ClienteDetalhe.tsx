@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import ClienteCRM from "@/components/cliente/ClienteCRM";
+import OrganizacaoTab from "@/components/cliente/OrganizacaoTab";
+import PlanejamentoTab from "@/components/cliente/PlanejamentoTab";
 import { useMemo } from "react";
 
 export default function ClienteDetalhe() {
@@ -68,16 +70,10 @@ export default function ClienteDetalhe() {
         </TabsContent>
 
         <TabsContent value="organizacao">
-          <Placeholder
-            title="Organização financeira"
-            desc="Entradas e saídas do cliente (receitas, despesas, parcelas, dívidas). Próximo módulo — reaproveita as tabelas client_receitas / client_despesas e o engine do Atlas."
-          />
+          <OrganizacaoTab clientId={client.id} />
         </TabsContent>
         <TabsContent value="planejamento">
-          <Placeholder
-            title="Planejamento"
-            desc="Objetivos, bens/imóveis, investimentos e aposentadoria. Tabelas já criadas no schema; telas de input vêm no próximo entregável."
-          />
+          <PlanejamentoTab clientId={client.id} />
         </TabsContent>
         <TabsContent value="projecao">
           <Placeholder

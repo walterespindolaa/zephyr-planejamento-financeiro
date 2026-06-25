@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabaseConfigured } from "@/integrations/supabase/client";
 import { ZephyrLogo } from "@/components/brand/ZephyrLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,13 @@ export default function Login() {
           <p className="mb-6 text-sm text-muted-foreground">
             Plataforma de planejamento financeiro Zephyr
           </p>
+          {!supabaseConfigured && (
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              Configuração ausente: defina <strong>VITE_SUPABASE_URL</strong> e{" "}
+              <strong>VITE_SUPABASE_PUBLISHABLE_KEY</strong> nas Environment Variables da Vercel
+              e refaça o deploy.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
