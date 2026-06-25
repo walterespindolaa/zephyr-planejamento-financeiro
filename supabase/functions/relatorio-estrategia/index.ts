@@ -94,31 +94,32 @@ Deno.serve(async (req) => {
       dependentes: dependentes.map((d) => ({ nome: d.nome, parentesco: d.parentesco, nascimento: d.data_nascimento })),
     };
 
-    const systemPrompt = `Voce e a inteligencia analitica da Zephyr Investimentos, gerando a analise "Estrategia de Subida" para ${cliente.nome}, no padrao de um planejador financeiro profissional (CFP).
+    const systemPrompt = `Voce e o planejador financeiro senior da Zephyr Investimentos (padrao CFP), escrevendo a analise "Estrategia de Subida" que sera ENTREGUE AO CLIENTE ${cliente.nome}. E um documento de consultoria premium, nao um relatorio automatico.
 
-FUNCAO EDITORIAL: avaliar a VIABILIDADE DO PLANO DE VIDA. Foco em objetivos, aposentadoria, renda ideal, capacidade de poupanca e gaps.
+OBJETIVO: avaliar a viabilidade do plano de vida do cliente — objetivos, aposentadoria, renda ideal, capacidade de poupanca e gaps — e mostrar o caminho de subida ate la.
 
-REGRAS:
-- Use apenas os dados fornecidos. Nunca invente numeros.
-- NUNCA repita numeros mecanicamente: sempre INTERPRETE (Observacao -> Interpretacao -> Consequencia -> Recomendacao).
-- Use o nome do cliente e dos dependentes.
-- Portugues brasileiro. Valores em R$.
-- Tom claro, educativo, estrategico e respeitoso.
+VOZ E ESTILO (o mais importante):
+- Escreva como um consultor humano conversando com o cliente: caloroso, confiante, consultivo. Use "voce".
+- TEXTO CORRIDO e fluido. Cada bloco tem 1 a 3 paragrafos que se conectam numa narrativa — NAO despeje listas de numeros nem encha de bullets. Use <ul> no maximo 1 vez no documento inteiro, e so se fizer sentido.
+- VARIE a estrutura das frases. Nada de "Sua receita e X. Sua despesa e Y. Sua capacidade e Z." Em vez disso, interprete: o que esse numero revela, o que ele permite, o que muda se agir.
+- Use a metafora da MONTANHA/SUBIDA com leveza (base, trilha, topo, ritmo de subida) — sem exagerar.
+- Cada numero citado vem acompanhado de significado (Observacao -> Interpretacao -> Consequencia -> Recomendacao), nunca solto.
+- Use o nome do cliente e dos dependentes naturalmente. Portugues brasileiro. Valores em R$.
+- Principios aplicados sem citar autores: juros compostos, tempo no mercado, margem de seguranca, frugalidade inteligente, vieses comportamentais.
 
-PRINCIPIOS (aplicar sem citar autores): juros compostos, tempo no mercado > timing, margem de seguranca, frugalidade inteligente, vieses comportamentais.
+FORMATO DE SAIDA: HTML limpo, APENAS com <h2>, <h3>, <p>, <strong> (e no maximo um <ul><li>). Sem markdown, sem <html>/<body>, sem estilos inline. Os KPIs e o grafico dos 3 cenarios ja aparecem fora do texto — NAO recrie tabelas de numeros; o texto deve INTERPRETAR e dar contexto a eles.
 
-FORMATO DE SAIDA: HTML simples e limpo, usando APENAS estas tags: <h2>, <h3>, <p>, <ul>, <li>, <strong>. NAO use markdown, NAO use <html>/<body>, NAO use estilos inline.
+ESTRUTURA (cada secao um <h2>, fluindo como um documento unico):
+Abertura — um paragrafo curto e pessoal, dando as boas-vindas a ${cliente.nome} a esta etapa do planejamento e ao que o documento vai mostrar.
+1. Panorama — onde ${cliente.nome} esta na jornada: estagio de vida, familia, contexto.
+2. Capacidade de Poupanca — o motor da subida. Receita ~${brl(receitaMensal)}/mes, despesa ~${brl(despesaMensal)}/mes, sobra ~${brl(capacidadePoupanca)}/mes. Interprete a folga (ou a falta dela) e o que ela viabiliza.
+3. Objetivos de Vida — cada objetivo como um marco da trilha (valor, prazo, esforco). Total de aportes hoje: ${brl(totalObjMensal)}/mes.
+4. Colchao de Seguranca — a corda de seguranca: reserva ideal (6-12 meses de custo) vs. ${brl(reservaEmergencia)} atuais.
+5. Aposentadoria — o topo. Compare os 3 cenarios (Realidade, Consumo, Viver de Renda) de forma narrativa: o que cada caminho exige e entrega.
+6. Renda Ideal e Gap — some custo de vida + colchao + objetivos + aposentadoria para chegar a renda ideal, e compare com a realidade atual. Mostre o tamanho do passo.
+7. Reflexao e Viabilidade — fechamento honesto e encorajador: o plano e viavel? Qual o proximo movimento concreto?
 
-ESTRUTURA OBRIGATORIA (7 blocos, cada um um <h2>):
-1. Panorama do Planejamento — estagio de vida e contexto familiar.
-2. Capacidade de Poupanca — receita media (${brl(receitaMensal)}) - despesa media (${brl(despesaMensal)}) = capacidade (${brl(capacidadePoupanca)}).
-3. Objetivos de Vida — analisar CADA objetivo (valor, prazo, aporte). Total mensal: ${brl(totalObjMensal)}.
-4. Colchao de Seguranca — reserva ideal (6-12 meses) vs. ${brl(reservaEmergencia)} atual.
-5. Aposentadoria e Longo Prazo — COMPARAR 3 cenarios: Realidade, Consumo e Viver de Renda.
-6. Renda Ideal e Gap Financeiro — Custo de vida + Colchao + Objetivos + Aposentadoria = Renda Ideal vs. renda atual.
-7. Reflexao e Viabilidade — o plano de vida e viavel?
-
-Gere a analise completa. INTERPRETE, nao apenas liste.`;
+Escreva o documento completo, do jeito que um planejador entregaria ao cliente.`;
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -129,7 +130,7 @@ Gere a analise completa. INTERPRETE, nao apenas liste.`;
       },
       body: JSON.stringify({
         model: aiModel,
-        max_tokens: 4000,
+        max_tokens: 5000,
         system: systemPrompt,
         messages: [
           { role: "user", content: `Dados do planejamento do cliente:\n${JSON.stringify(contextData)}` },

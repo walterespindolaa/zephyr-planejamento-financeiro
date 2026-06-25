@@ -7,10 +7,12 @@ export function exportReportPdf(opts: {
   titulo: string;
   clienteNome: string;
   contentHtml: string;
+  /** Bloco visual (KPIs + cenários) com estilos inline, inserido antes do texto. */
+  summaryHtml?: string;
   capaUrl?: string | null;
   contracapaUrl?: string | null;
 }) {
-  const { titulo, clienteNome, contentHtml, capaUrl, contracapaUrl } = opts;
+  const { titulo, clienteNome, contentHtml, summaryHtml, capaUrl, contracapaUrl } = opts;
   const w = window.open("", "_blank", "width=900,height=1200");
   if (!w) {
     alert("Permita pop-ups para exportar o PDF.");
@@ -47,7 +49,7 @@ export function exportReportPdf(opts: {
 </style></head>
 <body>
   ${capa}
-  <main class="content">${contentHtml}</main>
+  <main class="content">${summaryHtml ?? ""}${contentHtml}</main>
   ${contracapa}
   <script>
     window.onload = function () {

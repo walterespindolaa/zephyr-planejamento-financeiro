@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Client, ClientReport } from "@/lib/types";
 import ReportEditor from "./ReportEditor";
+import CenariosChart from "./CenariosChart";
 import { exportReportPdf } from "@/lib/exportReportPdf";
+import { buildSummaryHtml, fmtBRL, type CenarioInputs } from "@/lib/cenarios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,10 +113,37 @@ export default function RelatorioTab({ client }: { client: Client }) {
       titulo,
       clienteNome: client.nome,
       contentHtml: html,
+      summaryHtml: buildSummaryHtml(snapshot),
       capaUrl: data?.capa_url,
       contracapaUrl: data?.contracapa_url,
     });
   };
+
+  const cenarioInputs: CenarioInputs | null = snapshot
+    ? {
+        idade: Number(snapshot.idade),
+        idadeAposentadoria: Number(snapshot.idadeAposentadoria),
+        expectativaVida: Number(snapshot.expectativaVida),
+        patrimonioFinanceiro: Number(snapshot.patrimonioFinanceiro),
+        poupancaMensal: Number(snapshot.poupancaMensal),
+        taxaNominalPct: Number(snapshot.taxaNominal),
+        inflacaoPct: Number(snapshot.inflacao),
+        rendaDesejada: Number(snapshot.rendaDesejada),
+        rendaPassivaAtual: Number(snapshot.rendaPassivaAtual),
+        rendaPassivaBens: Number(snapshot.rendaPassivaBens),
+      }
+    : null;
+
+  const kpis: [string, number][] = snapshot
+    ? [
+        ["Patrimônio financeiro", Number(snapshot.patrimonioFinanceiro) || 0],
+        ["Patrimônio em bens", Number(snapshot.patrimonioBens) || 0],
+        ["Reserva de emergência", Number(snapshot.reservaEmergencia) || 0],
+        ["Receita média/mês", Number(snapshot.receitaMediaMensal) || 0],
+        ["Despesa média/mês", Number(snapshot.despesaMediaMensal) || 0],
+        ["Capacidade de poupança", Number(snapshot.capacidadePoupanca) || 0],
+      ]
+    : [];
 
   return (
     <div className="space-y-4">
@@ -151,6 +180,22 @@ export default function RelatorioTab({ client }: { client: Client }) {
             <p className="text-sm text-muted-foreground">
               A IA está analisando os dados do cliente… isso leva alguns segundos.
             </p>
+          )}
+
+          {snapshot && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {kpis.map(([label, val]) => (
+                  <div key={label} className="rounded-xl border bg-muted/20 px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {label}
+                    </p>
+                    <p className="text-base font-bold">{fmtBRL(val)}</p>
+                  </div>
+                ))}
+              </div>
+              {cenarioInputs && <CenariosChart inputs={cenarioInputs} />}
+            </div>
           )}
 
           <ReportEditor value={html} onChange={setHtml} />
