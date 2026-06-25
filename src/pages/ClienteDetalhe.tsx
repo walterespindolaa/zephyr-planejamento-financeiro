@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ClienteCRM from "@/components/cliente/ClienteCRM";
 import OrganizacaoTab from "@/components/cliente/OrganizacaoTab";
 import PlanejamentoTab from "@/components/cliente/PlanejamentoTab";
+import ProjecaoTab from "@/components/cliente/ProjecaoTab";
 import RelatorioTab from "@/components/cliente/RelatorioTab";
 import { useMemo } from "react";
 
@@ -77,10 +78,7 @@ export default function ClienteDetalhe() {
           <PlanejamentoTab clientId={client.id} />
         </TabsContent>
         <TabsContent value="projecao">
-          <Placeholder
-            title="Projeção · Vista da Montanha"
-            desc="Eventos de vida no tempo e impacto patrimonial em tempo real, usando o life_projection engine reaproveitado do Atlas."
-          />
+          <ProjecaoTab clientId={client.id} />
         </TabsContent>
         <TabsContent value="relatorio">
           <RelatorioTab client={client} />

@@ -10,7 +10,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ZephyrLogo, ZephyrMark } from "@/components/brand/ZephyrLogo";
+import { ZephyrLogo } from "@/components/brand/ZephyrLogo";
 import { ROLE_LABEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -42,84 +42,88 @@ export default function AppLayout() {
     navigate("/login");
   };
 
-  const NavItems = ({ collapsed }: { collapsed: boolean }) => (
-    <TooltipProvider delayDuration={0}>
-      <nav className="flex-1 space-y-1.5 px-3">
-        {nav.map((item) => (
-          <Tooltip key={item.to}>
-            <TooltipTrigger asChild>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center rounded-full py-2.5 text-sm font-medium transition-colors",
-                    collapsed ? "justify-center px-0" : "gap-3 px-4",
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && item.label}
-              </NavLink>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-          </Tooltip>
-        ))}
-      </nav>
-    </TooltipProvider>
-  );
+  const itemClass = (isActive: boolean, mini: boolean) =>
+    cn(
+      "flex items-center font-medium transition-colors",
+      mini
+        ? "mx-auto h-11 w-11 justify-center rounded-2xl"
+        : "gap-3 rounded-full px-4 py-2.5 text-sm",
+      isActive
+        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    );
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar desktop */}
-      <aside
-        className={cn(
-          "hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
-          collapsed ? "w-[76px]" : "w-64"
-        )}
-      >
-        <div className={cn("flex items-center py-6", collapsed ? "justify-center px-0" : "px-5")}>
-          {collapsed ? <ZephyrMark size={32} /> : <ZephyrLogo variant="light" size={28} />}
-        </div>
-
-        <NavItems collapsed={collapsed} />
-
-        <div className="space-y-2 border-t border-sidebar-border p-3">
-          {!collapsed && (
-            <div className="px-1">
-              <p className="truncate text-sm font-medium">{profile?.full_name}</p>
-              <p className="text-xs text-sidebar-foreground/60">{role ? ROLE_LABEL[role] : ""}</p>
-            </div>
+      {/* Sidebar desktop — painel flutuante arredondado */}
+      <div className="sticky top-0 hidden h-screen p-2 md:block">
+        <aside
+          className={cn(
+            "flex h-full flex-col rounded-3xl bg-sidebar text-sidebar-foreground shadow-elevated transition-[width] duration-200",
+            collapsed ? "w-[72px]" : "w-60"
           )}
-          <button
-            onClick={handleLogout}
-            className={cn(
-              "flex w-full items-center rounded-full py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent",
-              collapsed ? "justify-center" : "gap-2 px-3"
+        >
+          {/* Marca */}
+          <div className={cn("flex items-center py-5", collapsed ? "justify-center px-0" : "px-5")}>
+            {collapsed ? (
+              <img
+                src="/favicon.jpeg"
+                alt="Zephyr"
+                className="h-9 w-9 rounded-xl object-cover"
+              />
+            ) : (
+              <ZephyrLogo variant="light" size={26} />
             )}
-          >
-            <LogOut className="h-4 w-4" />
-            {!collapsed && "Sair"}
-          </button>
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className={cn(
-              "flex w-full items-center rounded-full py-2 text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent",
-              collapsed ? "justify-center" : "gap-2 px-3"
+          </div>
+
+          {/* Navegação */}
+          <TooltipProvider delayDuration={0}>
+            <nav className="flex-1 space-y-1.5 px-3">
+              {nav.map((item) =>
+                collapsed ? (
+                  <Tooltip key={item.to}>
+                    <TooltipTrigger asChild>
+                      <NavLink to={item.to} end={item.end} className={({ isActive }) => itemClass(isActive, true)}>
+                        <item.icon className="h-5 w-5" />
+                      </NavLink>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => itemClass(isActive, false)}>
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </NavLink>
+                )
+              )}
+            </nav>
+          </TooltipProvider>
+
+          {/* Rodapé */}
+          <div className="space-y-1 border-t border-sidebar-border/60 p-3">
+            {!collapsed && (
+              <div className="px-2 pb-1">
+                <p className="truncate text-sm font-medium">{profile?.full_name}</p>
+                <p className="text-xs text-sidebar-foreground/60">{role ? ROLE_LABEL[role] : ""}</p>
+              </div>
             )}
-          >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            {!collapsed && "Recolher"}
-          </button>
-        </div>
-      </aside>
+            <button onClick={handleLogout} className={cn("text-sidebar-foreground/70", itemClass(false, collapsed))}>
+              <LogOut className="h-5 w-5 shrink-0" />
+              {!collapsed && <span>Sair</span>}
+            </button>
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              className={cn("text-sidebar-foreground/50", itemClass(false, collapsed))}
+            >
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5 shrink-0" />}
+              {!collapsed && <span>Recolher</span>}
+            </button>
+          </div>
+        </aside>
+      </div>
 
       {/* Conteúdo + topo mobile */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
           <ZephyrLogo variant="dark" size={24} />
           <button onClick={() => setOpen(!open)}>
@@ -128,13 +132,22 @@ export default function AppLayout() {
         </header>
 
         {open && (
-          <div className="space-y-1 border-b bg-sidebar py-3 text-sidebar-foreground md:hidden">
-            <NavItems collapsed={false} />
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-2 px-6 py-2.5 text-sm text-sidebar-foreground/80"
-            >
-              <LogOut className="h-4 w-4" /> Sair
+          <div className="space-y-1 border-b bg-sidebar px-3 py-3 text-sidebar-foreground md:hidden">
+            {nav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) => itemClass(isActive, false)}
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+            <button onClick={handleLogout} className={cn("text-sidebar-foreground/70", itemClass(false, false))}>
+              <LogOut className="h-5 w-5 shrink-0" />
+              <span>Sair</span>
             </button>
           </div>
         )}
