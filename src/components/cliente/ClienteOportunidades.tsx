@@ -50,6 +50,7 @@ export default function ClienteOportunidades({ clientId }: { clientId: string })
   const [ops, setOps] = useState<Op[]>([]);
   const [tipo, setTipo] = useState("consorcio");
   const [titulo, setTitulo] = useState("");
+  const [novoValor, setNovoValor] = useState(0);
 
   const load = async () => {
     const { data } = await supabase
@@ -67,12 +68,13 @@ export default function ClienteOportunidades({ clientId }: { clientId: string })
   const add = async () => {
     const { data, error } = await supabase
       .from("client_acompanhamentos")
-      .insert({ client_id: clientId, tipo, titulo: titulo || null, created_by: user?.id ?? null })
+      .insert({ client_id: clientId, tipo, titulo: titulo || null, valor: novoValor || null, created_by: user?.id ?? null })
       .select("*")
       .single();
     if (error) return toast.error("Erro", { description: error.message });
     setOps((o) => [data as Op, ...o]);
     setTitulo("");
+    setNovoValor(0);
   };
   const patch = async (id: string, p: Partial<Op>) => {
     setOps((o) => o.map((x) => (x.id === id ? { ...x, ...p } : x)));
@@ -112,11 +114,14 @@ export default function ClienteOportunidades({ clientId }: { clientId: string })
           </Select>
           <Input
             className="h-9 flex-1 min-w-[180px]"
-            placeholder="Título / observação (ex.: Consórcio imóvel R$ 500k)"
+            placeholder="Título / observação (ex.: Consórcio imóvel)"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
           />
+          <div className="w-40">
+            <MoneyInput value={novoValor} onCommit={setNovoValor} placeholder="Valor R$" />
+          </div>
           <Button size="sm" onClick={add}><Plus className="mr-1.5 h-4 w-4" /> Adicionar</Button>
         </div>
 

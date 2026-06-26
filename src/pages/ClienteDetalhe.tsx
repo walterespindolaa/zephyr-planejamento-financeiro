@@ -56,7 +56,7 @@ export default function ClienteDetalhe() {
     );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-screen-2xl">
       <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Link>

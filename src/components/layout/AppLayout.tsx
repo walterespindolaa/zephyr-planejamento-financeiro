@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { Users, UserCog, LogOut, Menu, X, ClipboardList } from "lucide-react";
+import { Users, UserCog, LogOut, Menu, X, ClipboardList, ListChecks } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ZephyrLogo } from "@/components/brand/ZephyrLogo";
 import { ROLE_LABEL } from "@/lib/types";
@@ -16,6 +16,7 @@ export default function AppLayout() {
 
   const nav = [
     { to: "/", label: "Clientes", icon: Users, end: true },
+    { to: "/atividades", label: "Atividades", icon: ListChecks, end: false },
     { to: "/acompanhamentos", label: "Acompanhamentos", icon: ClipboardList, end: false },
     ...(role === "admin" ? [{ to: "/equipe", label: "Equipe", icon: UserCog, end: false }] : []),
   ];

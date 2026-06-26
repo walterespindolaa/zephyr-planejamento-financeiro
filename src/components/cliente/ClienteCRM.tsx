@@ -147,7 +147,7 @@ export default function ClienteCRM({ client }: { client: Client }) {
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Anotações gerais</label>
               <Textarea
-                rows={4}
+                rows={10}
                 value={info}
                 onChange={(e) => setInfo(e.target.value)}
                 placeholder="Contexto, perfil, preferências, situação familiar…"

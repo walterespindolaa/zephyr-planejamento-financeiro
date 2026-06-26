@@ -45,7 +45,7 @@ export default function Dashboard() {
   }, [clients]);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-screen-2xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
