@@ -12,6 +12,9 @@ import {
   FolderOpen,
   History,
   Calculator,
+  Scale,
+  ShieldCheck,
+  Activity,
 } from "lucide-react";
 import { useClient } from "@/hooks/useClients";
 import { useTeam } from "@/hooks/useTeam";
@@ -28,14 +31,20 @@ import ClienteOportunidades from "@/components/cliente/ClienteOportunidades";
 import ClienteArquivos from "@/components/cliente/ClienteArquivos";
 import RevisaoTab from "@/components/cliente/RevisaoTab";
 import SimuladorTab from "@/components/cliente/SimuladorTab";
+import ConsorcioTab from "@/components/cliente/ConsorcioTab";
+import ProtecaoSegurosTab from "@/components/cliente/ProtecaoSegurosTab";
+import AnaliseTab from "@/components/cliente/AnaliseTab";
 
 const SECTIONS = [
   { key: "visao", label: "Visão Geral", icon: LayoutDashboard },
   { key: "crm", label: "CRM", icon: ClipboardList },
   { key: "organizacao", label: "Organização", icon: Wallet },
   { key: "planejamento", label: "Planejamento", icon: Target },
+  { key: "analise", label: "Análise mensal", icon: Activity },
   { key: "projecao", label: "Projeção", icon: Mountain },
   { key: "simulador", label: "Simulador", icon: Calculator },
+  { key: "consorcio", label: "Consórcio × Financ.", icon: Scale },
+  { key: "protecao", label: "Proteção e Seguros", icon: ShieldCheck },
   { key: "oportunidades", label: "Oportunidades", icon: Handshake },
   { key: "arquivos", label: "Arquivos", icon: FolderOpen },
   { key: "relatorio", label: "Relatório", icon: FileText },
@@ -106,8 +115,11 @@ export default function ClienteDetalhe() {
           {active === "crm" && <ClienteCRM client={client} />}
           {active === "organizacao" && <OrganizacaoTab clientId={client.id} />}
           {active === "planejamento" && <PlanejamentoTab clientId={client.id} />}
+          {active === "analise" && <AnaliseTab clientId={client.id} />}
           {active === "projecao" && <ProjecaoTab clientId={client.id} />}
           {active === "simulador" && <SimuladorTab clientId={client.id} />}
+          {active === "consorcio" && <ConsorcioTab />}
+          {active === "protecao" && <ProtecaoSegurosTab clientId={client.id} />}
           {active === "oportunidades" && <ClienteOportunidades clientId={client.id} />}
           {active === "arquivos" && <ClienteArquivos clientId={client.id} />}
           {active === "relatorio" && <RelatorioTab client={client} />}
