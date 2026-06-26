@@ -15,6 +15,7 @@ import {
   Scale,
   ShieldCheck,
   Activity,
+  FileSearch,
 } from "lucide-react";
 import { useClient } from "@/hooks/useClients";
 import { useTeam } from "@/hooks/useTeam";
@@ -34,10 +35,12 @@ import SimuladorTab from "@/components/cliente/SimuladorTab";
 import ConsorcioTab from "@/components/cliente/ConsorcioTab";
 import ProtecaoSegurosTab from "@/components/cliente/ProtecaoSegurosTab";
 import AnaliseTab from "@/components/cliente/AnaliseTab";
+import ImportarXPTab from "@/components/cliente/ImportarXPTab";
 
 const SECTIONS = [
   { key: "visao", label: "Visão Geral", icon: LayoutDashboard },
   { key: "crm", label: "CRM", icon: ClipboardList },
+  { key: "importar", label: "Importar XP", icon: FileSearch },
   { key: "organizacao", label: "Organização", icon: Wallet },
   { key: "planejamento", label: "Planejamento", icon: Target },
   { key: "analise", label: "Análise mensal", icon: Activity },
@@ -113,6 +116,7 @@ export default function ClienteDetalhe() {
         <div className="min-w-0 flex-1">
           {active === "visao" && <ClienteVisaoGeral client={client} />}
           {active === "crm" && <ClienteCRM client={client} />}
+          {active === "importar" && <ImportarXPTab clientId={client.id} />}
           {active === "organizacao" && <OrganizacaoTab clientId={client.id} />}
           {active === "planejamento" && <PlanejamentoTab clientId={client.id} />}
           {active === "analise" && <AnaliseTab clientId={client.id} />}
