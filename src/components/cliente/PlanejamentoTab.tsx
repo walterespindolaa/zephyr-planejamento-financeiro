@@ -1,6 +1,8 @@
 import CrudList from "./CrudList";
 import AposentadoriaForm from "./AposentadoriaForm";
 import ObjetivosManager from "./ObjetivosManager";
+import BensManager from "./BensManager";
+import SaveBar from "./SaveBar";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function PlanejamentoTab({ clientId }: { clientId: string }) {
@@ -51,29 +53,7 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
         title="Bens e imóveis"
         desc="Patrimônio em bens (valor − dívida) e renda passiva de aluguéis."
       >
-        <CrudList
-          clientId={clientId}
-          table="client_bens"
-          addLabel="Adicionar bem"
-          defaults={{ nome: "", valor: 0, divida_vinculada: 0, gera_renda: false, valor_renda: 0 }}
-          fields={[
-            { key: "nome", label: "Nome", type: "text", grow: 2, placeholder: "Apartamento…" },
-            {
-              key: "tipo",
-              label: "Tipo",
-              type: "select",
-              options: [
-                { value: "imovel", label: "Imóvel" },
-                { value: "veiculo", label: "Veículo" },
-                { value: "outro", label: "Outro" },
-              ],
-            },
-            { key: "valor", label: "Valor (R$)", type: "money" },
-            { key: "divida_vinculada", label: "Dívida (R$)", type: "money" },
-            { key: "gera_renda", label: "Renda?", type: "bool", grow: 0.5 },
-            { key: "valor_renda", label: "Renda/mês (R$)", type: "money" },
-          ]}
-        />
+        <BensManager clientId={clientId} />
       </Section>
 
       <Section title="Dependentes" desc="Usados no panorama familiar do relatório.">
@@ -81,14 +61,28 @@ export default function PlanejamentoTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           table="client_dependentes"
           addLabel="Adicionar dependente"
-          defaults={{ nome: "" }}
+          defaults={{ nome: "", parentesco: "filho" }}
           fields={[
             { key: "nome", label: "Nome", type: "text", grow: 2 },
-            { key: "parentesco", label: "Parentesco", type: "text", placeholder: "Filho(a)…" },
+            {
+              key: "parentesco",
+              label: "Parentesco",
+              type: "select",
+              grow: 1.2,
+              options: [
+                { value: "conjuge", label: "Cônjuge" },
+                { value: "filho", label: "Filho(a)" },
+                { value: "pai", label: "Pai" },
+                { value: "mae", label: "Mãe" },
+                { value: "outro", label: "Outro" },
+              ],
+            },
             { key: "data_nascimento", label: "Nascimento", type: "date" },
           ]}
         />
       </Section>
+
+      <SaveBar />
     </div>
   );
 }

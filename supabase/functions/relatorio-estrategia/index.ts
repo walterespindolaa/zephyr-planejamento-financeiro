@@ -99,8 +99,14 @@ Deno.serve(async (req) => {
       capacidadePoupanca,
       totalAporteMensalObjetivos: totalObjMensal,
       objetivos: objetivos.map((o) => ({
-        nome: o.nome, valor: o.valor_objetivo, acumulado: o.valor_acumulado,
-        prazo: o.data_objetivo, aporteMensal: o.aporte_mensal,
+        nome: o.nome, tipo: o.tipo, valor: o.valor_objetivo, acumulado: o.valor_acumulado,
+        prazo: o.data_objetivo, aporteMensal: o.aporte_mensal, frequencia: o.frequencia,
+      })),
+      receitas: receitas.map((r) => ({ categoria: r.categoria, descricao: r.descricao, valor: r.valor, mensal: r.recorrente })),
+      despesas: despesas.map((d) => ({ categoria: d.categoria, descricao: d.descricao, valor: d.valor, tipo: d.tipo, mensal: d.recorrente })),
+      bens: bens.map((b) => ({
+        nome: b.nome, tipo: b.tipo, valor: b.valor, divida: b.divida_vinculada,
+        liquido: Number(b.valor) - Number(b.divida_vinculada || 0), geraRenda: b.gera_renda, renda: b.valor_renda,
       })),
       dependentes: dependentes.map((d) => ({ nome: d.nome, parentesco: d.parentesco, nascimento: d.data_nascimento })),
     };
@@ -125,8 +131,10 @@ ESTRUTURA (cada secao um <h2>, fluindo como um documento unico):
 Abertura — paragrafo curto e pessoal, dando boas-vindas a ${cliente.nome}.
 1. Panorama — estagio de vida, familia, contexto.
 2. Capacidade de Poupanca — o motor da subida (receita ~${brl(receitaMensal)}/mes, despesa ~${brl(despesaMensal)}/mes, sobra ~${brl(capacidadePoupanca)}/mes).
-3. Objetivos de Vida — cada objetivo como marco da trilha. Aportes hoje: ${brl(totalObjMensal)}/mes.
+3. Objetivos de Vida — analise CADA objetivo cadastrado pelo NOME, citando valor, prazo e o APORTE MENSAL necessario de cada um (campo aporteMensal). Aportes hoje: ${brl(totalObjMensal)}/mes.
 4. Colchao de Seguranca — reserva ideal (6-12 meses) vs. ${brl(reservaEmergencia)} atuais.
+
+USE OS DADOS ESPECIFICOS: cite as principais receitas pela descricao (campo receitas), os bens relevantes pelo nome (campo bens, com valor/divida/liquido e renda), e cada objetivo pelo nome com seu aporte. NAO generalize quando ha dado concreto.
 5. Aposentadoria — o topo. Compare os 3 cenarios (Realidade, Consumo, Viver de Renda) de forma narrativa.
 6. Renda Ideal e Gap — custo de vida + colchao + objetivos + aposentadoria vs. renda atual.
 7. Reflexao e Viabilidade — fechamento honesto e encorajador; proximo movimento concreto.`;

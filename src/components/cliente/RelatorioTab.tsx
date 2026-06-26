@@ -20,7 +20,8 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const { user } = useAuth();
   const [reports, setReports] = useState<ClientReport[]>([]);
   const [current, setCurrent] = useState<ClientReport | null>(null);
-  const [titulo, setTitulo] = useState("Estratégia de Subida");
+  const tituloPadrao = `Planejamento Financeiro | ${client.nome} | Zephyr`;
+  const [titulo, setTitulo] = useState(tituloPadrao);
   const [html, setHtml] = useState("");
   const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -59,7 +60,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
 
   const novoRelatorio = () => {
     setCurrent(null);
-    setTitulo("Estratégia de Subida");
+    setTitulo(tituloPadrao);
     setHtml("");
     setSnapshot(null);
     setProjHtml(null);
@@ -268,7 +269,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
               </Button>
               <Button size="sm" onClick={gerar} disabled={generating}>
                 {generating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
-                {generating ? "Gerando…" : "Gerar com IA"}
+                {generating ? "Gerando…" : "Gerar relatório"}
               </Button>
               <Button variant="outline" size="sm" onClick={salvar} disabled={saving}>
                 <Save className="mr-1.5 h-4 w-4" /> Salvar

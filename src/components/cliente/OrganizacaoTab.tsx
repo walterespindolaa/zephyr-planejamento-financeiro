@@ -1,4 +1,5 @@
 import CrudList from "./CrudList";
+import SaveBar from "./SaveBar";
 import { Card, CardContent } from "@/components/ui/card";
 
 const CAT_RECEITA = [
@@ -110,6 +111,8 @@ export default function OrganizacaoTab({ clientId }: { clientId: string }) {
           />
         </CardContent>
       </Card>
+
+      <SaveBar />
     </div>
   );
 }

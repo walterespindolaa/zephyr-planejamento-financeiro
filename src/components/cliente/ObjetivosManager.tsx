@@ -164,9 +164,10 @@ function NovoObjetivo({
   const [aporteCustom, setAporteCustom] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  const dataFull = data ? `${data}-01` : null; // input é mês/ano (YYYY-MM)
   const sugestao = useMemo(
-    () => Math.round(calcPoupancaMensal(valor, frequencia, data || null, taxaReal)),
-    [valor, frequencia, data, taxaReal]
+    () => Math.round(calcPoupancaMensal(valor, frequencia, dataFull, taxaReal)),
+    [valor, frequencia, dataFull, taxaReal]
   );
 
   const salvar = async () => {
@@ -188,7 +189,7 @@ function NovoObjetivo({
       aporte_mensal: aporte,
       aporte_automatico: auto,
       frequencia,
-      data_objetivo: data || null,
+      data_objetivo: dataFull,
     });
     setSaving(false);
     if (error) {
@@ -265,8 +266,8 @@ function NovoObjetivo({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Quando quer realizar?</Label>
-            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <Label className="text-xs">Quando quer realizar? (mês/ano)</Label>
+            <Input type="month" value={data} onChange={(e) => setData(e.target.value)} />
           </div>
         </div>
 
