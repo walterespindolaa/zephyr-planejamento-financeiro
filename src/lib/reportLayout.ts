@@ -248,6 +248,74 @@ export function buildInstitutionalSections(s: Record<string, any> | null): strin
   return fluxo + patrimonio + projecao + termos;
 }
 
+// ── Apresentação "pocket" (versão enxuta e visual para o cliente) ───────────
+export interface PocketOpts {
+  indicadores: boolean;
+  saude: boolean;
+  cenarios: boolean;
+  evolucao: boolean;
+  proximos: boolean;
+  protecao: boolean;
+}
+
+export function buildPocketHtml(s: Record<string, any> | null, opts: PocketOpts, nome: string): string {
+  if (!s) return "<p>Gere o relatório primeiro para criar a apresentação.</p>";
+  const primeiro = (nome || "Cliente").split(" ")[0];
+  const fin = Number(s.patrimonioFinanceiro) || 0;
+  const bens = Number(s.patrimonioBens) || 0;
+  const total = fin + bens;
+  const cap = Number(s.capacidadePoupanca) || 0;
+  const reserva = Number(s.reservaEmergencia) || 0;
+  const despMes = Number(s.despesaMediaMensal) || 0;
+
+  const hero = `
+    <div style="background:#14201a;border-radius:16px;padding:22px 24px;color:#fff;margin-bottom:14px;">
+      <div style="font-size:11px;color:#9fb3a6;text-transform:uppercase;letter-spacing:.08em;">Apresentação do Planejamento</div>
+      <div style="font-size:22px;font-weight:800;margin:4px 0;">${primeiro}</div>
+      <div style="font-size:13px;color:#cfe0d6;">Patrimônio total <strong style="color:#7fe0a3;">${fmtBRL(total)}</strong> · capacidade de poupança <strong style="color:#7fe0a3;">${fmtBRL(cap)}/mês</strong></div>
+    </div>`;
+
+  const kpi = (label: string, val: string) =>
+    `<td style="padding:12px 14px;border:1px solid #e3e8e5;border-radius:12px;vertical-align:top;">
+       <div style="font-size:10px;color:#6b7d74;text-transform:uppercase;">${label}</div>
+       <div style="font-size:17px;font-weight:800;color:#14201a;">${val}</div>
+     </td>`;
+  const indicadores = !opts.indicadores ? "" :
+    `<table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:14px;"><tr>
+       ${kpi("Patrimônio total", fmtBRL(total))}
+       ${kpi("Financeiro", fmtBRL(fin))}
+       ${kpi("Reserva", fmtBRL(reserva))}
+       ${kpi("Capacidade/mês", fmtBRL(cap))}
+     </tr></table>`;
+
+  const dot = (cor: string) => `<span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:${cor};margin-right:6px;"></span>`;
+  const GREEN = "#16a34a", AMBER = "#d99a00", RED = "#b23b32";
+  const linhaSaude = (label: string, status: string, cor: string) =>
+    `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eef1ef;font-size:12px;">
+       <span>${label}</span><span style="font-weight:600;">${dot(cor)}${status}</span></div>`;
+  const reservaOk = despMes > 0 ? reserva >= 6 * despMes : reserva > 0;
+  const saude = !opts.saude ? "" : card(
+    `<div style="font-size:11px;color:#6b7d74;text-transform:uppercase;margin-bottom:6px;">Painel de Saúde do Planejamento</div>
+     ${linhaSaude("Capacidade de aporte", cap > 0 ? "Dentro da meta" : "Atenção", cap > 0 ? GREEN : AMBER)}
+     ${linhaSaude("Reserva de emergência", reservaOk ? "Adequada" : "Abaixo do ideal", reservaOk ? GREEN : AMBER)}
+     ${linhaSaude("Evolução patrimonial", s.comparacao ? (Number(s.comparacao.patrimonioFinanceiro?.delta) >= 0 ? "Acima da projeção" : "Abaixo") : "Marco inicial", s.comparacao ? (Number(s.comparacao.patrimonioFinanceiro?.delta) >= 0 ? GREEN : RED) : AMBER)}
+     ${linhaSaude("Proteção patrimonial", s.protecao ? "Configurada" : "A revisar", s.protecao ? GREEN : AMBER)}
+     ${linhaSaude("Aposentadoria", "Em acompanhamento", GREEN)}`
+  );
+
+  const cenarios = !opts.cenarios ? "" : cenariosCard(s);
+  const evolucao = opts.evolucao && s.comparacao ? buildComparacao(s.comparacao) : "";
+  const protecao = opts.protecao ? buildProtecao(s) : "";
+
+  const passos = (s.proximosPassos || []) as any[];
+  const proximos = !opts.proximos || !passos.length ? "" : card(
+    `<div style="font-size:11px;color:#6b7d74;text-transform:uppercase;margin-bottom:6px;">Próximos Passos</div>
+     ${passos.map((p) => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #eef1ef;">→ <strong>${p.titulo || p.tipo}</strong>${p.valor ? ` · ${fmtBRL(p.valor)}` : ""}</div>`).join("")}`
+  );
+
+  return hero + indicadores + saude + cenarios + evolucao + protecao + proximos;
+}
+
 export function buildProtecao(s: Record<string, any> | null): string {
   const p = s?.protecao;
   if (!p) return "";

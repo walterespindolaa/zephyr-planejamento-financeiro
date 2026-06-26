@@ -7,7 +7,8 @@ import CenariosChart from "./CenariosChart";
 import TabHint from "./TabHint";
 import { exportReportPdf } from "@/lib/exportReportPdf";
 import { buildProjectionHtml, fmtBRL, type CenarioInputs } from "@/lib/cenarios";
-import { composeFullReport } from "@/lib/reportLayout";
+import { composeFullReport, buildPocketHtml, type PocketOpts } from "@/lib/reportLayout";
+import { Checkbox } from "@/components/ui/checkbox";
 import { runLifeProjection, type LifeEvent } from "@/lib/financial_engine/life_projection";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,10 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [baselineId, setBaselineId] = useState<string>("");
+  const [showApres, setShowApres] = useState(false);
+  const [pocket, setPocket] = useState<PocketOpts>({
+    indicadores: true, saude: true, cenarios: true, evolucao: true, proximos: true, protecao: true,
+  });
   const lastSaved = useRef<string>("");
 
   // Anotações da planejadora (entram no relatório) — persistidas em clients.info
@@ -229,6 +234,22 @@ export default function RelatorioTab({ client }: { client: Client }) {
     toast.success("Relatório excluído");
   };
 
+  const gerarApresentacao = async () => {
+    const { data } = await supabase
+      .from("firm_settings")
+      .select("capa_url, contracapa_url")
+      .eq("id", 1)
+      .maybeSingle();
+    exportReportPdf({
+      titulo: `Apresentação | ${client.nome} | Zephyr`,
+      clienteNome: client.nome,
+      contentHtml: buildPocketHtml(snapshot, pocket, client.nome),
+      capaUrl: data?.capa_url,
+      contracapaUrl: data?.contracapa_url,
+    });
+    setShowApres(false);
+  };
+
   const getChartSvg = () =>
     (document.querySelector("#zephyr-cenarios-host svg") as SVGElement | null)?.outerHTML;
 
@@ -328,7 +349,10 @@ export default function RelatorioTab({ client }: { client: Client }) {
                 <Eye className="mr-1.5 h-4 w-4" /> Pré-visualizar
               </Button>
               <Button variant="outline" size="sm" onClick={exportarMain} disabled={!html}>
-                <FileDown className="mr-1.5 h-4 w-4" /> PDF
+                <FileDown className="mr-1.5 h-4 w-4" /> PDF completo
+              </Button>
+              <Button size="sm" onClick={() => setShowApres(true)} disabled={!snapshot}>
+                <FileDown className="mr-1.5 h-4 w-4" /> Apresentação
               </Button>
             </div>
           </div>
@@ -419,6 +443,36 @@ export default function RelatorioTab({ client }: { client: Client }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal da apresentação pocket */}
+      <Dialog open={showApres} onOpenChange={setShowApres}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Apresentação (versão pocket)</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Versão enxuta e visual para apresentar ao cliente. Marque o que deve aparecer:
+          </p>
+          <div className="space-y-2">
+            {([
+              ["indicadores", "Indicadores principais (KPIs)"],
+              ["saude", "Painel de saúde do planejamento"],
+              ["cenarios", "Cenários de aposentadoria"],
+              ["evolucao", "Evolução (se for acompanhamento)"],
+              ["proximos", "Próximos passos / oportunidades"],
+              ["protecao", "Proteção patrimonial"],
+            ] as [keyof PocketOpts, string][]).map(([k, label]) => (
+              <label key={k} className="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm">
+                <Checkbox checked={pocket[k]} onCheckedChange={(c) => setPocket((p) => ({ ...p, [k]: !!c }))} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <Button className="w-full" onClick={gerarApresentacao}>
+            <FileDown className="mr-1.5 h-4 w-4" /> Gerar apresentação (PDF)
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de pré-visualização */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
