@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, X, Eye } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -33,11 +34,9 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [anotacoes, setAnotacoes] = useState(client.info ?? "");
   const [savingNotas, setSavingNotas] = useState(false);
 
-  // Projeção (SIMULAÇÃO efêmera — não salva, some ao trocar de aba / F5)
-  const [projGenerating, setProjGenerating] = useState(false);
-  const [projHtml, setProjHtml] = useState<string | null>(null);
-  const [projData, setProjData] = useState<any>(null);
-  const [projSnapshot, setProjSnapshot] = useState<Record<string, any> | null>(null);
+  // Opção: incluir a projeção de vida (eventos) dentro do mesmo relatório
+  const [incluirProjecao, setIncluirProjecao] = useState(false);
+  const [projData, setProjData] = useState<any>(null); // resumo da projeção (p/ o PDF)
 
   const loadReports = async () => {
     const { data } = await supabase
@@ -65,7 +64,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
     setTitulo(tituloPadrao);
     setHtml("");
     setSnapshot(null);
-    setProjHtml(null);
+    setProjData(null);
   };
 
   const abrir = (r: ClientReport) => {
@@ -73,13 +72,68 @@ export default function RelatorioTab({ client }: { client: Client }) {
     setTitulo(r.titulo);
     setHtml(r.content_html ?? "");
     setSnapshot(r.snapshot ?? null);
-    setProjHtml(null);
+    setProjData(null);
+  };
+
+  // Calcula o resumo da projeção (eventos) — usado quando "incluir projeção" está ligado
+  const computeProjecao = async () => {
+    const [apoR, invR, bensR, recR, despR, evR] = await Promise.all([
+      supabase.from("client_aposentadoria").select("*").eq("client_id", client.id).maybeSingle(),
+      supabase.from("client_investimentos").select("valor_atual").eq("client_id", client.id),
+      supabase.from("client_bens").select("valor, divida_vinculada").eq("client_id", client.id),
+      supabase.from("client_receitas").select("valor, recorrente").eq("client_id", client.id),
+      supabase.from("client_despesas").select("valor, recorrente").eq("client_id", client.id),
+      supabase.from("client_eventos").select("*").eq("client_id", client.id).order("ano"),
+    ]);
+    const eventos = (evR.data as any[]) || [];
+    if (eventos.length === 0) return null;
+    const apo: any = apoR.data || {};
+    const sum = (arr: any[] | null, f: (x: any) => number) => (arr || []).reduce((s, x) => s + (f(x) || 0), 0);
+    const mensal = (arr: any[] | null, f: (x: any) => number) =>
+      sum((arr || []).filter((x) => x.recorrente), f) + sum((arr || []).filter((x) => !x.recorrente), f) / 12;
+    const inputs = {
+      patrimonioInicial: sum(invR.data, (i) => Number(i.valor_atual)) + sum(bensR.data, (b) => Number(b.valor) - Number(b.divida_vinculada || 0)),
+      rendaMensal: Math.round(mensal(recR.data, (r) => Number(r.valor))),
+      poupancaMensal: Math.max(0, Math.round(mensal(recR.data, (r) => Number(r.valor)) - mensal(despR.data, (d) => Number(d.valor)))),
+      taxaRetornoAnual: Number(apo.taxa_retorno_anual ?? 0.06),
+      inflacaoAnual: Number(apo.inflacao_anual ?? 0.04),
+      idadeAtual: apo.idade_atual ?? 35,
+      idadeAposentadoria: apo.idade_aposentadoria ?? 60,
+      expectativaVida: apo.expectativa_vida ?? 90,
+      events: [] as LifeEvent[],
+    };
+    const lifeEvents: LifeEvent[] = eventos.map((e) => ({
+      id: e.id, name: e.name, emoji: e.emoji, year: e.ano,
+      impactValue: Number(e.impacto_valor) || 0, monthlyImpact: Number(e.impacto_mensal) || 0,
+      durationMonths: Number(e.duracao_meses) || 0, type: e.tipo,
+    }));
+    const base = runLifeProjection({ ...inputs, events: [] });
+    const withEv = runLifeProjection({ ...inputs, events: lifeEvents });
+    return {
+      patrimonioFinalSemEventos: base.patrimonioFinal,
+      patrimonioFinalComEventos: withEv.patrimonioFinal,
+      patrimonioAposentadoria: withEv.patrimonioAposentadoria,
+      expectativaVida: inputs.expectativaVida,
+      eventos: eventos.map((e) => ({
+        name: e.name, ano: e.ano, impactoValor: Number(e.impacto_valor) || 0,
+        impactoMensal: Number(e.impacto_mensal) || 0, duracaoMeses: Number(e.duracao_meses) || 0,
+      })),
+    };
   };
 
   const gerar = async () => {
     setGenerating(true);
+    let projecao = null;
+    if (incluirProjecao) {
+      projecao = await computeProjecao();
+      if (!projecao) {
+        setGenerating(false);
+        toast.error("Sem eventos", { description: "Adicione eventos na aba Projeção ou desligue a projeção." });
+        return;
+      }
+    }
     const { data, error } = await supabase.functions.invoke("relatorio-estrategia", {
-      body: { clientId: client.id, modo: "principal" },
+      body: { clientId: client.id, modo: projecao ? "projecao" : "principal", projecao },
     });
     setGenerating(false);
     if (error || (data as any)?.error) {
@@ -88,8 +142,8 @@ export default function RelatorioTab({ client }: { client: Client }) {
     }
     setHtml((data as any).html);
     setSnapshot((data as any).snapshot ?? null);
+    setProjData(projecao);
     setCurrent(null);
-    setProjHtml(null);
     toast.success("Relatório gerado", { description: "Edite à vontade e clique em Salvar." });
   };
 
@@ -131,98 +185,14 @@ export default function RelatorioTab({ client }: { client: Client }) {
       .select("capa_url, contracapa_url")
       .eq("id", 1)
       .maybeSingle();
-    const body = composeFullReport({
-      titulo,
-      nome: client.nome,
-      contentHtml: html,
-      snapshot,
-      chartSvg: getChartSvg(),
-    });
-    exportReportPdf({
-      titulo,
-      clienteNome: client.nome,
-      contentHtml: body,
-      capaUrl: data?.capa_url,
-      contracapaUrl: data?.contracapa_url,
-    });
-  };
-
-  // ── Projeção (simulação) ───────────────────────────────────────────────
-  const gerarProjecao = async () => {
-    setProjGenerating(true);
-    // 1) agrega dados + eventos para calcular o impacto
-    const [apoR, invR, bensR, recR, despR, evR] = await Promise.all([
-      supabase.from("client_aposentadoria").select("*").eq("client_id", client.id).maybeSingle(),
-      supabase.from("client_investimentos").select("valor_atual").eq("client_id", client.id),
-      supabase.from("client_bens").select("valor, divida_vinculada").eq("client_id", client.id),
-      supabase.from("client_receitas").select("valor, recorrente").eq("client_id", client.id),
-      supabase.from("client_despesas").select("valor, recorrente").eq("client_id", client.id),
-      supabase.from("client_eventos").select("*").eq("client_id", client.id).order("ano"),
-    ]);
-    const apo: any = apoR.data || {};
-    const eventos = (evR.data as any[]) || [];
-    if (eventos.length === 0) {
-      setProjGenerating(false);
-      toast.error("Sem eventos", { description: "Adicione eventos na aba Projeção primeiro." });
-      return;
-    }
-    const sum = (arr: any[] | null, f: (x: any) => number) => (arr || []).reduce((s, x) => s + (f(x) || 0), 0);
-    const mensal = (arr: any[] | null, f: (x: any) => number) =>
-      sum((arr || []).filter((x) => x.recorrente), f) + sum((arr || []).filter((x) => !x.recorrente), f) / 12;
-    const inputs = {
-      patrimonioInicial: sum(invR.data, (i) => Number(i.valor_atual)) + sum(bensR.data, (b) => Number(b.valor) - Number(b.divida_vinculada || 0)),
-      rendaMensal: Math.round(mensal(recR.data, (r) => Number(r.valor))),
-      poupancaMensal: apo.poupanca_mensal ?? Math.max(0, Math.round(mensal(recR.data, (r) => Number(r.valor)) - mensal(despR.data, (d) => Number(d.valor)))),
-      taxaRetornoAnual: Number(apo.taxa_retorno_anual ?? 0.1),
-      inflacaoAnual: Number(apo.inflacao_anual ?? 0.04),
-      idadeAtual: apo.idade_atual ?? 35,
-      idadeAposentadoria: apo.idade_aposentadoria ?? 60,
-      expectativaVida: apo.expectativa_vida ?? 90,
-      events: [] as LifeEvent[],
-    };
-    const lifeEvents: LifeEvent[] = eventos.map((e) => ({
-      id: e.id, name: e.name, emoji: e.emoji, year: e.ano,
-      impactValue: Number(e.impacto_valor) || 0, monthlyImpact: Number(e.impacto_mensal) || 0,
-      durationMonths: Number(e.duracao_meses) || 0, type: e.tipo,
-    }));
-    const base = runLifeProjection({ ...inputs, events: [] });
-    const withEv = runLifeProjection({ ...inputs, events: lifeEvents });
-    const projecao = {
-      patrimonioFinalSemEventos: base.patrimonioFinal,
-      patrimonioFinalComEventos: withEv.patrimonioFinal,
-      patrimonioAposentadoria: withEv.patrimonioAposentadoria,
-      expectativaVida: inputs.expectativaVida,
-      eventos: eventos.map((e) => ({
-        name: e.name, ano: e.ano, impactoValor: Number(e.impacto_valor) || 0,
-        impactoMensal: Number(e.impacto_mensal) || 0, duracaoMeses: Number(e.duracao_meses) || 0,
-      })),
-    };
-
-    // 2) gera o texto da simulação (não salva)
-    const { data, error } = await supabase.functions.invoke("relatorio-estrategia", {
-      body: { clientId: client.id, modo: "projecao", projecao },
-    });
-    setProjGenerating(false);
-    if (error || (data as any)?.error) {
-      toast.error("Erro na projeção", { description: (data as any)?.error || error?.message });
-      return;
-    }
-    setProjHtml((data as any).html);
-    setProjSnapshot((data as any).snapshot ?? null);
-    setProjData(projecao);
-    toast.success("Projeção gerada", { description: "Simulação — não altera o relatório principal." });
-  };
-
-  const baixarPdfProjecao = async () => {
-    if (!projHtml) return;
-    const { data } = await supabase
-      .from("firm_settings")
-      .select("capa_url, contracapa_url")
-      .eq("id", 1)
-      .maybeSingle();
     const body =
-      composeFullReport({ titulo, nome: client.nome, contentHtml: projHtml, snapshot: projSnapshot }) +
-      buildProjectionHtml(projData);
+      composeFullReport({
+        titulo,
+        nome: client.nome,
+        contentHtml: html,
+        snapshot,
+        chartSvg: getChartSvg(),
+      }) + (projData ? buildProjectionHtml(projData) : "");
     exportReportPdf({
       titulo,
       clienteNome: client.nome,
@@ -305,6 +275,13 @@ export default function RelatorioTab({ client }: { client: Client }) {
             </div>
           </div>
 
+          <label className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+            <Switch checked={incluirProjecao} onCheckedChange={setIncluirProjecao} />
+            <span className="flex items-center gap-1.5">
+              <Mountain className="h-4 w-4 text-primary" /> Incluir projeção de vida (eventos da aba Projeção)
+            </span>
+          </label>
+
           {snapshot && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -341,55 +318,8 @@ export default function RelatorioTab({ client }: { client: Client }) {
           )}
           <p className="text-xs text-muted-foreground">
             Este é o relatório oficial do cliente (salvável). Use "Pré-visualizar" para ver o
-            layout final (texto + cards por seção), igual ao PDF. A projeção abaixo é uma simulação
-            à parte.
+            layout final (texto + cards por seção), igual ao PDF.
           </p>
-        </CardContent>
-      </Card>
-
-      {/* Versão com projeção de vida — SIMULAÇÃO efêmera */}
-      <Card className="border-primary/30">
-        <CardContent className="space-y-3 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Mountain className="h-4 w-4 text-primary" /> Versão com projeção de vida (simulação)
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Usa os eventos da aba Projeção. Não altera nem salva o relatório principal — é só
-                para o cliente analisar o impacto. Ao trocar de aba ou recarregar, some.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={gerarProjecao} disabled={projGenerating}>
-                {projGenerating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
-                {projGenerating ? "Gerando…" : "Gerar projeção"}
-              </Button>
-              {projHtml && (
-                <Button size="sm" variant="outline" onClick={baixarPdfProjecao}>
-                  <FileDown className="mr-1.5 h-4 w-4" /> Baixar PDF projetado
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {projHtml && (
-            <div className="space-y-2">
-              <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning-foreground">
-                Simulação — não salva
-              </Badge>
-              <button
-                onClick={() => setProjHtml(null)}
-                className="ml-2 inline-flex items-center text-xs text-muted-foreground hover:text-foreground"
-              >
-                <X className="mr-1 h-3 w-3" /> Descartar
-              </button>
-              <div
-                className="zephyr-prose max-h-[420px] overflow-y-auto rounded-lg border bg-muted/10 p-4"
-                dangerouslySetInnerHTML={{ __html: projHtml }}
-              />
-            </div>
-          )}
         </CardContent>
       </Card>
 
