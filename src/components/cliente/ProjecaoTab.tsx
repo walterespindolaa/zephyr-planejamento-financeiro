@@ -110,6 +110,11 @@ export default function ProjecaoTab({ clientId }: { clientId: string }) {
     setEventos((e) => e.filter((ev) => ev.id !== id));
     await supabase.from("client_eventos").delete().eq("id", id);
   };
+  const limparEventos = async () => {
+    await supabase.from("client_eventos").delete().eq("client_id", clientId);
+    setEventos([]);
+    toast.success("Eventos limpos");
+  };
 
   if (loading || !inputs || !result) return <p className="text-sm text-muted-foreground">Carregando…</p>;
 
@@ -190,14 +195,19 @@ export default function ProjecaoTab({ clientId }: { clientId: string }) {
               <h4 className="font-semibold">Eventos de vida</h4>
               <p className="text-xs text-muted-foreground">Adicione eventos e veja o impacto recalcular na hora.</p>
             </div>
-            <Select onValueChange={(v) => addEvento(Number(v))}>
-              <SelectTrigger className="h-9 w-48"><SelectValue placeholder="+ Adicionar evento" /></SelectTrigger>
-              <SelectContent>
-                {EVENT_TEMPLATES.map((t, i) => (
-                  <SelectItem key={i} value={String(i)}>{t.emoji} {t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {eventos.length > 0 && (
+                <Button variant="outline" size="sm" onClick={limparEventos}>Limpar eventos</Button>
+              )}
+              <Select onValueChange={(v) => addEvento(Number(v))}>
+                <SelectTrigger className="h-9 w-48"><SelectValue placeholder="+ Adicionar evento" /></SelectTrigger>
+                <SelectContent>
+                  {EVENT_TEMPLATES.map((t, i) => (
+                    <SelectItem key={i} value={String(i)}>{t.emoji} {t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {eventos.length === 0 && <p className="py-2 text-sm text-muted-foreground">Nenhum evento ainda.</p>}
           <div className="space-y-2">
