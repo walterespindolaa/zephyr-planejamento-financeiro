@@ -19,6 +19,8 @@ import { format } from "date-fns";
 
 interface Inv { id: string; nome: string; valor_atual: number }
 interface Obj { id: string; nome: string; valor_acumulado: number }
+interface Rec { id: string; categoria: string | null; descricao: string | null; valor: number }
+interface Desp { id: string; categoria: string | null; descricao: string | null; valor: number }
 
 export default function RevisaoTab({ client }: { client: Client }) {
   const { user } = useAuth();
@@ -26,17 +28,24 @@ export default function RevisaoTab({ client }: { client: Client }) {
   const [baselineId, setBaselineId] = useState("");
   const [invs, setInvs] = useState<Inv[]>([]);
   const [objs, setObjs] = useState<Obj[]>([]);
+  const [recs, setRecs] = useState<Rec[]>([]);
+  const [desps, setDesps] = useState<Desp[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [novoObj, setNovoObj] = useState({ nome: "", valor: 0, aporte: 0 });
 
   const load = async () => {
-    const [rep, inv, obj] = await Promise.all([
+    const [rep, inv, obj, rec, desp] = await Promise.all([
       supabase.from("client_reports").select("*").eq("client_id", client.id).order("created_at", { ascending: false }),
       supabase.from("client_investimentos").select("id, nome, valor_atual").eq("client_id", client.id).order("created_at"),
       supabase.from("client_objetivos").select("id, nome, valor_acumulado").eq("client_id", client.id).order("created_at"),
+      supabase.from("client_receitas").select("id, categoria, descricao, valor").eq("client_id", client.id).order("created_at"),
+      supabase.from("client_despesas").select("id, categoria, descricao, valor").eq("client_id", client.id).order("created_at"),
     ]);
     setReports(((rep.data as ClientReport[]) || []).filter((r) => r.snapshot));
     setInvs((inv.data as Inv[]) || []);
     setObjs((obj.data as Obj[]) || []);
+    setRecs((rec.data as Rec[]) || []);
+    setDesps((desp.data as Desp[]) || []);
   };
   useEffect(() => {
     load();
@@ -61,6 +70,29 @@ export default function RevisaoTab({ client }: { client: Client }) {
   const updObj = async (id: string, v: number) => {
     setObjs((x) => x.map((o) => (o.id === id ? { ...o, valor_acumulado: v } : o)));
     await supabase.from("client_objetivos").update({ valor_acumulado: v }).eq("id", id);
+  };
+  const updRec = async (id: string, v: number) => {
+    setRecs((x) => x.map((r) => (r.id === id ? { ...r, valor: v } : r)));
+    await supabase.from("client_receitas").update({ valor: v }).eq("id", id);
+  };
+  const updDesp = async (id: string, v: number) => {
+    setDesps((x) => x.map((d) => (d.id === id ? { ...d, valor: v } : d)));
+    await supabase.from("client_despesas").update({ valor: v }).eq("id", id);
+  };
+  const addObjetivo = async () => {
+    if (!novoObj.nome.trim()) {
+      toast.error("Informe o nome do objetivo");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("client_objetivos")
+      .insert({ client_id: client.id, nome: novoObj.nome.trim(), valor_objetivo: novoObj.valor, aporte_mensal: novoObj.aporte, valor_acumulado: 0 })
+      .select("id, nome, valor_acumulado")
+      .single();
+    if (error) return toast.error("Erro ao adicionar", { description: error.message });
+    setObjs((x) => [...x, data as Obj]);
+    setNovoObj({ nome: "", valor: 0, aporte: 0 });
+    toast.success("Objetivo adicionado");
   };
 
   const gerar = async () => {

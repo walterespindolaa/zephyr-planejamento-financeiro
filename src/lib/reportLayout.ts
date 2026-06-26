@@ -11,7 +11,7 @@ function splitSections(html: string): { title: string; html: string }[] {
 }
 
 const card = (inner: string) =>
-  `<div style="border:1px solid #e3e8e5;border-radius:14px;padding:16px 18px;margin:10px 0 18px;background:#fafbfa;">${inner}</div>`;
+  `<div class="pdf-card" style="border:1px solid #e3e8e5;border-radius:14px;padding:16px 18px;margin:10px 0 18px;background:#fafbfa;">${inner}</div>`;
 
 const cell = (label: string, value: string, color = "#14633e") =>
   `<td style="text-align:center;padding:6px 10px;">

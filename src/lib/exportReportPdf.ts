@@ -61,6 +61,17 @@ export async function exportReportPdf(opts: {
   document.body.appendChild(holder);
 
   const canvas = await html2canvas(holder, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+
+  // Pontos de corte seguros (fim de parágrafos, linhas de tabela, cards…) para
+  // não cortar texto no meio entre páginas.
+  const holderRect = holder.getBoundingClientRect();
+  const scaleFactor = canvas.width / holder.clientWidth;
+  const breakpoints: number[] = [];
+  holder.querySelectorAll("p, h2, h3, h4, li, tr, .pdf-card").forEach((el) => {
+    const bottom = (el as HTMLElement).getBoundingClientRect().bottom - holderRect.top;
+    breakpoints.push(Math.round(bottom * scaleFactor));
+  });
+  breakpoints.sort((a, b) => a - b);
   document.body.removeChild(holder);
 
   const pdf = new jsPDF("p", "mm", "a4");
@@ -109,7 +120,16 @@ export async function exportReportPdf(opts: {
   while (rendered < canvas.height) {
     pdf.addPage();
     drawChrome();
-    const sliceH = Math.min(pageSlicePx, canvas.height - rendered);
+    const target = rendered + pageSlicePx;
+    // procura o último ponto de corte seguro dentro da página
+    let cut = 0;
+    for (const bp of breakpoints) {
+      if (bp > rendered && bp <= target) cut = bp;
+      else if (bp > target) break;
+    }
+    // se nenhum ponto seguro couber (elemento maior que a página), corta no limite
+    if (cut <= rendered) cut = Math.min(target, canvas.height);
+    const sliceH = cut - rendered;
     const slice = document.createElement("canvas");
     slice.width = canvas.width;
     slice.height = sliceH;
