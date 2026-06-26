@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
         nome: o.nome, tipo: o.tipo, valor: o.valor_objetivo, acumulado: o.valor_acumulado,
         prazo: o.data_objetivo, aporteMensal: o.aporte_mensal, frequencia: o.frequencia,
       })),
+      investimentos: investimentos.map((i) => ({ nome: i.nome, classe: i.classe, tipo: i.tipo, valor: i.valor_atual, reserva: i.is_reserva_emergencia })),
       receitas: receitas.map((r) => ({ categoria: r.categoria, descricao: r.descricao, valor: r.valor, mensal: r.recorrente })),
       despesas: despesas.map((d) => ({ categoria: d.categoria, descricao: d.descricao, valor: d.valor, tipo: d.tipo, mensal: d.recorrente })),
       bens: bens.map((b) => ({
