@@ -1,12 +1,40 @@
-/**
- * Exporta o relatório como PDF via janela de impressão do navegador.
- * Capa e contracapa em página inteira (limpas). As páginas de conteúdo têm,
- * em cada página, o logo + barra verde-musgo no topo e barra no rodapé,
- * usando thead/tfoot (que se repetem automaticamente na impressão).
- */
-const MOSS = "#3b4a2b"; // verde musgo escuro
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-export function exportReportPdf(opts: {
+/**
+ * Gera o PDF e baixa direto (sem abrir página/diálogo de impressão).
+ * Capa e contracapa em página inteira; páginas de conteúdo com logo + barra
+ * verde-musgo no topo e no rodapé, desenhados em cada página.
+ */
+const MOSS: [number, number, number] = [59, 74, 43]; // #3b4a2b
+
+const A4 = { w: 210, h: 297 };
+const MARGIN_X = 18;
+const HEADER_H = 16; // zona do cabeçalho (mm)
+const FOOTER_H = 12; // zona do rodapé (mm)
+const CONTENT_W = A4.w - MARGIN_X * 2;
+const CONTENT_H = A4.h - HEADER_H - FOOTER_H;
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/** Converte a imagem para JPEG dataURL (preenche a página inteira ao adicionar). */
+function imgToJpeg(img: HTMLImageElement): string {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
+  c.getContext("2d")!.drawImage(img, 0, 0);
+  return c.toDataURL("image/jpeg", 0.95);
+}
+
+export async function exportReportPdf(opts: {
   titulo: string;
   clienteNome: string;
   contentHtml: string;
@@ -15,65 +43,92 @@ export function exportReportPdf(opts: {
   contracapaUrl?: string | null;
 }) {
   const { titulo, clienteNome, contentHtml, summaryHtml, capaUrl, contracapaUrl } = opts;
-  const w = window.open("", "_blank", "width=900,height=1200");
-  if (!w) {
-    alert("Permita pop-ups para exportar o PDF.");
-    return;
+
+  // 1) Render do conteúdo num container escondido, na largura útil
+  const pxPerMm = 96 / 25.4;
+  const holder = document.createElement("div");
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${Math.round(CONTENT_W * pxPerMm)}px;background:#fff;`;
+  holder.innerHTML = `
+    <style>
+      .pdfdoc { font-family: Inter, 'DM Sans', sans-serif; color:#14201a; padding:2px; }
+      .pdfdoc h2 { font-size:15px; margin:16px 0 6px; color:#14633e; }
+      .pdfdoc h3 { font-size:13px; margin:10px 0 4px; }
+      .pdfdoc p { font-size:11.5px; line-height:1.6; margin:6px 0; }
+      .pdfdoc ul, .pdfdoc ol { font-size:11.5px; line-height:1.6; padding-left:18px; }
+      .pdfdoc strong { font-weight:700; }
+    </style>
+    <div class="pdfdoc">${summaryHtml ?? ""}${contentHtml}</div>`;
+  document.body.appendChild(holder);
+
+  const canvas = await html2canvas(holder, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+  document.body.removeChild(holder);
+
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  // 2) Capa
+  if (capaUrl) {
+    try {
+      const img = await loadImage(capaUrl);
+      pdf.addImage(imgToJpeg(img), "JPEG", 0, 0, A4.w, A4.h); // estica p/ página inteira
+    } catch {
+      pdf.setFillColor(14, 23, 20);
+      pdf.rect(0, 0, A4.w, A4.h, "F");
+    }
+  } else {
+    pdf.setFillColor(14, 23, 20);
+    pdf.rect(0, 0, A4.w, A4.h, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(22);
+    pdf.text(titulo, A4.w / 2, A4.h / 2, { align: "center", maxWidth: A4.w - 40 });
+    pdf.setFontSize(12);
+    pdf.text(clienteNome, A4.w / 2, A4.h / 2 + 16, { align: "center" });
   }
 
-  const logoUrl = `${window.location.origin}/zephyr-logo-dark.png`;
+  // logo (cabeçalho)
+  let logo: HTMLImageElement | null = null;
+  try {
+    logo = await loadImage(`${window.location.origin}/zephyr-logo-dark.png`);
+  } catch {
+    /* sem logo */
+  }
+  const logoH = 6;
+  const logoW = logo ? (logo.width / logo.height) * logoH : 0;
 
-  const capa = capaUrl
-    ? `<section class="full-page"><img src="${capaUrl}" /></section>`
-    : `<section class="full-page cover-fallback"><h1>${titulo}</h1><p>${clienteNome}</p></section>`;
-  const contracapa = contracapaUrl
-    ? `<section class="full-page"><img src="${contracapaUrl}" /></section>`
-    : "";
+  const drawChrome = () => {
+    pdf.setFillColor(MOSS[0], MOSS[1], MOSS[2]);
+    pdf.rect(0, 0, A4.w, 2, "F"); // barra topo
+    if (logo) pdf.addImage(logo, "PNG", MARGIN_X, 5, logoW, logoH);
+    pdf.setFillColor(MOSS[0], MOSS[1], MOSS[2]);
+    pdf.rect(0, A4.h - 2, A4.w, 2, "F"); // barra rodapé
+  };
 
-  w.document.write(`<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8" />
-<title>${titulo} — ${clienteNome}</title>
-<style>
-  @page { size: A4; margin: 0; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { margin: 0; font-family: Inter, 'DM Sans', sans-serif; color: #14201a; }
+  // 3) Páginas de conteúdo (fatiando o canvas)
+  const scalePxPerMm = canvas.width / CONTENT_W;
+  const pageSlicePx = Math.floor(CONTENT_H * scalePxPerMm);
+  let rendered = 0;
+  while (rendered < canvas.height) {
+    pdf.addPage();
+    drawChrome();
+    const sliceH = Math.min(pageSlicePx, canvas.height - rendered);
+    const slice = document.createElement("canvas");
+    slice.width = canvas.width;
+    slice.height = sliceH;
+    slice.getContext("2d")!.drawImage(canvas, 0, rendered, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+    const sliceHmm = sliceH / scalePxPerMm;
+    pdf.addImage(slice.toDataURL("image/jpeg", 0.92), "JPEG", MARGIN_X, HEADER_H, CONTENT_W, sliceHmm);
+    rendered += sliceH;
+  }
 
-  /* Capa / contracapa — página inteira, sem cabeçalho */
-  .full-page { width: 210mm; height: 297mm; page-break-after: always; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-  .full-page img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cover-fallback { flex-direction: column; background: #0e1714; color: #fff; }
-  .cover-fallback h1 { font-size: 30px; margin: 0 0 8px; padding: 0 24px; text-align: center; }
+  // 4) Contracapa
+  if (contracapaUrl) {
+    try {
+      const img = await loadImage(contracapaUrl);
+      pdf.addPage();
+      pdf.addImage(imgToJpeg(img), "JPEG", 0, 0, A4.w, A4.h); // estica p/ página inteira
+    } catch {
+      /* ignora */
+    }
+  }
 
-  /* Conteúdo — thead/tfoot repetem em cada página */
-  table.report { width: 100%; border-collapse: collapse; }
-  .hd-cell, .ft-cell { padding: 0; }
-  .hd .bar { height: 7px; background: ${MOSS}; }
-  .hd img { height: 20px; margin: 9px 0 9px 20mm; display: block; }
-  .ft { position: relative; height: 14mm; }
-  .ft .bar { position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background: ${MOSS}; }
-  .body-cell { padding: 5mm 20mm 0 20mm; }
-
-  .content h2 { font-size: 16px; margin: 18px 0 6px; color: #14633e; }
-  .content h3 { font-size: 14px; margin: 12px 0 4px; }
-  .content p { font-size: 12px; line-height: 1.6; margin: 6px 0; }
-  .content ul, .content ol { font-size: 12px; line-height: 1.6; padding-left: 20px; }
-</style></head>
-<body>
-  ${capa}
-  <table class="report">
-    <thead><tr><td class="hd-cell"><div class="hd"><div class="bar"></div><img src="${logoUrl}" alt="Zephyr" /></div></td></tr></thead>
-    <tfoot><tr><td class="ft-cell"><div class="ft"><div class="bar"></div></div></td></tr></tfoot>
-    <tbody><tr><td class="body-cell"><main class="content">${summaryHtml ?? ""}${contentHtml}</main></td></tr></tbody>
-  </table>
-  ${contracapa}
-  <script>
-    window.onload = function () {
-      var imgs = Array.prototype.slice.call(document.images);
-      Promise.all(imgs.map(function (img) {
-        return img.complete ? Promise.resolve() : new Promise(function (r) { img.onload = img.onerror = r; });
-      })).then(function () { setTimeout(function () { window.print(); }, 300); });
-    };
-  </script>
-</body></html>`);
-  w.document.close();
+  pdf.save(`${titulo}.pdf`);
 }
