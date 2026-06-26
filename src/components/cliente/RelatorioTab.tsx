@@ -5,14 +5,15 @@ import type { Client, ClientReport } from "@/lib/types";
 import ReportEditor from "./ReportEditor";
 import CenariosChart from "./CenariosChart";
 import { exportReportPdf } from "@/lib/exportReportPdf";
-import { buildSummaryHtml, buildProjectionHtml, fmtBRL, type CenarioInputs } from "@/lib/cenarios";
+import { buildProjectionHtml, fmtBRL, type CenarioInputs } from "@/lib/cenarios";
+import { composeFullReport } from "@/lib/reportLayout";
 import { runLifeProjection, type LifeEvent } from "@/lib/financial_engine/life_projection";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, X } from "lucide-react";
+import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -26,6 +27,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Anotações da planejadora (entram no relatório) — persistidas em clients.info
   const [anotacoes, setAnotacoes] = useState(client.info ?? "");
@@ -120,17 +122,26 @@ export default function RelatorioTab({ client }: { client: Client }) {
     loadReports();
   };
 
-  const exportar = async (conteudo: string, summary: string) => {
+  const getChartSvg = () =>
+    (document.querySelector("#zephyr-cenarios-host svg") as SVGElement | null)?.outerHTML;
+
+  const exportarMain = async () => {
     const { data } = await supabase
       .from("firm_settings")
       .select("capa_url, contracapa_url")
       .eq("id", 1)
       .maybeSingle();
+    const body = composeFullReport({
+      titulo,
+      nome: client.nome,
+      contentHtml: html,
+      snapshot,
+      chartSvg: getChartSvg(),
+    });
     exportReportPdf({
       titulo,
       clienteNome: client.nome,
-      contentHtml: conteudo,
-      summaryHtml: summary,
+      contentHtml: body,
       capaUrl: data?.capa_url,
       contracapaUrl: data?.contracapa_url,
     });
@@ -202,12 +213,23 @@ export default function RelatorioTab({ client }: { client: Client }) {
     toast.success("Projeção gerada", { description: "Simulação — não altera o relatório principal." });
   };
 
-  const baixarPdfProjecao = () => {
+  const baixarPdfProjecao = async () => {
     if (!projHtml) return;
-    exportar(
-      projHtml,
-      (projSnapshot ? buildSummaryHtml(projSnapshot) : "") + buildProjectionHtml(projData)
-    );
+    const { data } = await supabase
+      .from("firm_settings")
+      .select("capa_url, contracapa_url")
+      .eq("id", 1)
+      .maybeSingle();
+    const body =
+      composeFullReport({ titulo, nome: client.nome, contentHtml: projHtml, snapshot: projSnapshot }) +
+      buildProjectionHtml(projData);
+    exportReportPdf({
+      titulo,
+      clienteNome: client.nome,
+      contentHtml: body,
+      capaUrl: data?.capa_url,
+      contracapaUrl: data?.contracapa_url,
+    });
   };
 
   const cenarioInputs: CenarioInputs | null = snapshot
@@ -274,7 +296,10 @@ export default function RelatorioTab({ client }: { client: Client }) {
               <Button variant="outline" size="sm" onClick={salvar} disabled={saving}>
                 <Save className="mr-1.5 h-4 w-4" /> Salvar
               </Button>
-              <Button variant="outline" size="sm" onClick={() => exportar(html, buildSummaryHtml(snapshot))} disabled={!html}>
+              <Button variant="outline" size="sm" onClick={() => setShowPreview((p) => !p)} disabled={!html}>
+                <Eye className="mr-1.5 h-4 w-4" /> {showPreview ? "Editar" : "Pré-visualizar"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportarMain} disabled={!html}>
                 <FileDown className="mr-1.5 h-4 w-4" /> PDF
               </Button>
             </div>
@@ -290,14 +315,34 @@ export default function RelatorioTab({ client }: { client: Client }) {
                   </div>
                 ))}
               </div>
-              {cenarioInputs && <CenariosChart inputs={cenarioInputs} />}
+              {cenarioInputs && (
+                <div id="zephyr-cenarios-host">
+                  <CenariosChart inputs={cenarioInputs} />
+                </div>
+              )}
             </div>
           )}
 
-          <ReportEditor value={html} onChange={setHtml} />
+          {showPreview ? (
+            <div
+              className="zephyr-prose rounded-lg border bg-white p-5"
+              dangerouslySetInnerHTML={{
+                __html: composeFullReport({
+                  titulo,
+                  nome: client.nome,
+                  contentHtml: html,
+                  snapshot,
+                  chartSvg: getChartSvg(),
+                }),
+              }}
+            />
+          ) : (
+            <ReportEditor value={html} onChange={setHtml} />
+          )}
           <p className="text-xs text-muted-foreground">
-            Este é o relatório oficial do cliente (salvável). A projeção abaixo é uma simulação à
-            parte.
+            Este é o relatório oficial do cliente (salvável). Use "Pré-visualizar" para ver o
+            layout final (texto + cards por seção), igual ao PDF. A projeção abaixo é uma simulação
+            à parte.
           </p>
         </CardContent>
       </Card>
