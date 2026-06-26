@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
 
     const contextData: Record<string, any> = {
       nome: cliente.nome,
+      estadoCivil: cliente.estado_civil ?? null,
+      regimeCasamento: cliente.regime_casamento ?? null,
       idade: apo.idade_atual ?? null,
       idadeAposentadoria: apo.idade_aposentadoria ?? 60,
       expectativaVida: apo.expectativa_vida ?? 90,
@@ -220,6 +222,12 @@ ESTA E UMA VERSAO COM PROJECAO DE VIDA (simulacao). Alem da estrutura acima, REE
 - Compare o patrimonio final SEM eventos (${brl(projecao.patrimonioFinalSemEventos)}) com o patrimonio final COM os eventos (${brl(projecao.patrimonioFinalComEventos)}), interpretando a diferenca de ${brl((projecao.patrimonioFinalComEventos || 0) - (projecao.patrimonioFinalSemEventos || 0))}.
 - Deixe claro, com leveza, que e uma SIMULACAO para o cliente refletir sobre escolhas de vida — nao uma mudanca do plano oficial.
 Eventos projetados: ${JSON.stringify(projecao.eventos || [])}.`;
+    }
+
+    if (contextData.estadoCivil || contextData.regimeCasamento) {
+      systemPrompt += `
+
+ESTADO CIVIL E REGIME DE BENS: o cliente e ${contextData.estadoCivil || "—"}${contextData.regimeCasamento ? `, sob ${contextData.regimeCasamento}` : ""}. Na secao de Protecao e Sucessao Patrimonial, mencione explicitamente o regime de bens e EXPLIQUE de forma objetiva e tecnica como ele afeta a PARTILHA e a SUCESSAO (meacao do conjuge, bens comunicaveis x particulares, reflexo no inventario e no planejamento sucessorio). Conecte ao custo de inventario/ITCMD ja calculado (campo protecao) quando existir. Seja institucional e factual; sem aconselhamento juridico definitivo — recomende validacao com advogado especializado.`;
     }
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
