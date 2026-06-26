@@ -20,6 +20,7 @@ export interface Client {
   data_nascimento: string | null;
   profissao: string | null;
   estado_civil: string | null;
+  regime_casamento: string | null;
   status: ClientStatus;
   assessor_id: string | null;
   planejadora_id: string | null;

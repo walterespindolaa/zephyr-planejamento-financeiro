@@ -29,21 +29,27 @@ Deno.serve(async (req) => {
 
     const prompt = `Voce recebe um relatorio de PLANEJAMENTO FINANCEIRO da XP (em PDF). Extraia as variaveis abaixo e retorne APENAS um JSON valido, sem texto antes ou depois, sem markdown.
 
+RENDAS e DESPESAS: extraia CADA LINHA das tabelas "Rendas" e "Despesas" SEPARADAMENTE (uma entrada por linha, NAO some/unifique). Para cada linha pegue descricao, categoria, membro familiar e o VALOR LIQUIDO (mensal). Se a frequencia for anual, converta para mensal dividindo por 12.
 Mapeie as classes de investimento assim: "Renda Fixa"->"renda_fixa", "Renda Variavel"->"renda_variavel", "FII"/"Fundos Imobiliarios"->"fii", "Internacional"/"Exterior"->"exterior", "Cripto"->"cripto", outros->"outro".
 Mapeie tipos de bem: imovel/apartamento/casa->"imovel", carro/veiculo->"veiculo", empresa/participacao/sociedade->"empresa", outros->"outro".
+Mapeie parentesco do dependente: conjuge/esposa/marido->"conjuge", filho/filha->"filho", pai->"pai", mae->"mae", outros->"outro".
+Regime de casamento: use exatamente um de "Comunhao parcial de bens", "Comunhao universal de bens", "Separacao total de bens", "Separacao obrigatoria de bens", "Participacao final nos aquestos", ou null.
 Valores SEMPRE como numero (sem "R$", sem pontos de milhar, use ponto decimal). Use null quando nao encontrar.
 
 Formato:
 {
-  "receitaMensal": number|null,
-  "despesaMensal": number|null,
+  "estadoCivil": string|null,
+  "regimeCasamento": string|null,
   "patrimonioFinanceiro": number|null,
   "reservaEmergencia": number|null,
   "idade": number|null,
   "idadeAposentadoria": number|null,
   "rendaDesejada": number|null,
+  "receitas": [{"descricao": string, "categoria": string, "membro": string, "valor": number}],
+  "despesas": [{"descricao": string, "categoria": string, "membro": string, "valor": number}],
   "investimentos": [{"nome": string, "classe": string, "valor": number}],
-  "bens": [{"nome": string, "tipo": string, "valor": number, "divida": number}]
+  "bens": [{"nome": string, "tipo": string, "valor": number, "divida": number}],
+  "dependentes": [{"nome": string, "parentesco": string}]
 }`;
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {

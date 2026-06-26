@@ -35,6 +35,8 @@ export default function ClienteCRM({ client }: { client: Client }) {
 
   const [info, setInfo] = useState(client.info ?? "");
   const [origem, setOrigem] = useState(client.origem ?? "");
+  const [estadoCivil, setEstadoCivil] = useState(client.estado_civil ?? "");
+  const [regime, setRegime] = useState(client.regime_casamento ?? "");
   const [noteText, setNoteText] = useState("");
   const [noteTipo, setNoteTipo] = useState("nota");
   const [taskTitle, setTaskTitle] = useState("");
@@ -69,11 +71,25 @@ export default function ClienteCRM({ client }: { client: Client }) {
   const saveInfo = async () => {
     await supabase
       .from("clients")
-      .update({ info: info || null, origem: origem || null })
+      .update({
+        info: info || null,
+        origem: origem || null,
+        estado_civil: estadoCivil || null,
+        regime_casamento: regime || null,
+      })
       .eq("id", clientId);
     qc.invalidateQueries({ queryKey: ["client", clientId] });
     toast.success("Informações salvas");
   };
+
+  const ESTADO_CIVIL = ["Solteiro(a)", "Casado(a)", "União estável", "Divorciado(a)", "Viúvo(a)"];
+  const REGIMES = [
+    "Comunhão parcial de bens",
+    "Comunhão universal de bens",
+    "Separação total de bens",
+    "Separação obrigatória de bens",
+    "Participação final nos aquestos",
+  ];
 
   const addNote = async () => {
     if (!noteText.trim()) return;
@@ -140,6 +156,26 @@ export default function ClienteCRM({ client }: { client: Client }) {
         <Card>
           <CardContent className="space-y-3 py-5">
             <h3 className="font-semibold">Informações do cliente</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Estado civil</label>
+                <Select value={estadoCivil || undefined} onValueChange={setEstadoCivil}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+                  <SelectContent>
+                    {ESTADO_CIVIL.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Regime de casamento</label>
+                <Select value={regime || undefined} onValueChange={setRegime}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+                  <SelectContent>
+                    {REGIMES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Origem</label>
               <Input value={origem} onChange={(e) => setOrigem(e.target.value)} />
