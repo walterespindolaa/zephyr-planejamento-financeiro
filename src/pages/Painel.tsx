@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeam } from "@/hooks/useTeam";
@@ -12,6 +13,16 @@ const TIPO_LABEL: Record<string, string> = {
   reuniao: "Reunião", revisao: "Revisão", outro: "Outro",
 };
 const ABERTAS = ["pendente", "agendado", "feito"];
+
+/** Se o "nome" vier como e-mail, formata a partir do trecho antes do @. */
+function prettyName(n?: string | null): string {
+  if (!n) return "Sem assessor";
+  if (!n.includes("@")) return n;
+  return n
+    .split("@")[0]
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export default function Painel() {
   const { data: team = [] } = useTeam();
@@ -101,11 +112,11 @@ export default function Painel() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <Kpi icon={Users} label="Clientes" value={String(agg.totalClientes)} sub={`${agg.ativos} ativos · ${agg.leads} leads`} />
-        <Kpi icon={FileText} label="Planejamentos" value={String(agg.planejamentos)} />
-        <Kpi icon={Handshake} label="Oport. na mesa" value={String(agg.oportAbertas)} sub={fmtBRL(agg.valorMesa)} accent />
-        <Kpi icon={CheckCircle2} label="Oport. fechadas" value={String(agg.oportFechadas)} sub={fmtBRL(agg.valorFechado)} />
-        <Kpi icon={CalendarClock} label="Atividades" value={String(agg.pendentes)} sub={`${agg.atrasadas} atrasadas`} />
+        <Kpi icon={Users} label="Clientes" value={String(agg.totalClientes)} sub={`${agg.ativos} ativos · ${agg.leads} leads`} to="/" />
+        <Kpi icon={FileText} label="Planejamentos" value={String(agg.planejamentos)} to="/" />
+        <Kpi icon={Handshake} label="Oport. na mesa" value={String(agg.oportAbertas)} sub={fmtBRL(agg.valorMesa)} accent to="/acompanhamentos" />
+        <Kpi icon={CheckCircle2} label="Oport. fechadas" value={String(agg.oportFechadas)} sub={fmtBRL(agg.valorFechado)} to="/acompanhamentos" />
+        <Kpi icon={CalendarClock} label="Atividades" value={String(agg.pendentes)} sub={`${agg.atrasadas} atrasadas`} to="/atividades" />
         <Kpi icon={TrendingUp} label="Reuniões" value={String(agg.reunioesPorTipo["reuniao"] || 0)} />
       </div>
 
@@ -129,7 +140,7 @@ export default function Painel() {
                   .sort((a, b) => b[1].clientes - a[1].clientes)
                   .map(([id, v]) => (
                     <tr key={id} className="border-t">
-                      <td className="py-1.5">{nameById[id] || "Sem assessor"}</td>
+                      <td className="py-1.5">{id === "—" ? "Sem assessor" : prettyName(nameById[id])}</td>
                       <td className="py-1.5 text-right">{v.clientes}</td>
                       <td className="py-1.5 text-right">{v.planejamentos}</td>
                       <td className="py-1.5 text-right">{v.oport}</td>
@@ -167,9 +178,9 @@ export default function Painel() {
   );
 }
 
-function Kpi({ icon: Icon, label, value, sub, accent }: { icon: any; label: string; value: string; sub?: string; accent?: boolean }) {
-  return (
-    <Card className={accent ? "border-primary/30 bg-primary/5" : ""}>
+function Kpi({ icon: Icon, label, value, sub, accent, to }: { icon: any; label: string; value: string; sub?: string; accent?: boolean; to?: string }) {
+  const inner = (
+    <Card className={`${accent ? "border-primary/30 bg-primary/5" : ""} ${to ? "cursor-pointer transition-colors hover:border-primary/40" : ""}`}>
       <CardContent className="py-4">
         <div className="mb-1 flex items-center gap-2 text-muted-foreground">
           <Icon className="h-4 w-4" />
@@ -180,4 +191,5 @@ function Kpi({ icon: Icon, label, value, sub, accent }: { icon: any; label: stri
       </CardContent>
     </Card>
   );
+  return to ? <Link to={to}>{inner}</Link> : inner;
 }

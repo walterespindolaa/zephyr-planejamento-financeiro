@@ -11,6 +11,7 @@ import {
   Handshake,
   FolderOpen,
   History,
+  Calculator,
 } from "lucide-react";
 import { useClient } from "@/hooks/useClients";
 import { useTeam } from "@/hooks/useTeam";
@@ -26,6 +27,7 @@ import RelatorioTab from "@/components/cliente/RelatorioTab";
 import ClienteOportunidades from "@/components/cliente/ClienteOportunidades";
 import ClienteArquivos from "@/components/cliente/ClienteArquivos";
 import RevisaoTab from "@/components/cliente/RevisaoTab";
+import SimuladorTab from "@/components/cliente/SimuladorTab";
 
 const SECTIONS = [
   { key: "visao", label: "Visão Geral", icon: LayoutDashboard },
@@ -33,6 +35,7 @@ const SECTIONS = [
   { key: "organizacao", label: "Organização", icon: Wallet },
   { key: "planejamento", label: "Planejamento", icon: Target },
   { key: "projecao", label: "Projeção", icon: Mountain },
+  { key: "simulador", label: "Simulador", icon: Calculator },
   { key: "oportunidades", label: "Oportunidades", icon: Handshake },
   { key: "arquivos", label: "Arquivos", icon: FolderOpen },
   { key: "relatorio", label: "Relatório", icon: FileText },
@@ -104,6 +107,7 @@ export default function ClienteDetalhe() {
           {active === "organizacao" && <OrganizacaoTab clientId={client.id} />}
           {active === "planejamento" && <PlanejamentoTab clientId={client.id} />}
           {active === "projecao" && <ProjecaoTab clientId={client.id} />}
+          {active === "simulador" && <SimuladorTab clientId={client.id} />}
           {active === "oportunidades" && <ClienteOportunidades clientId={client.id} />}
           {active === "arquivos" && <ClienteArquivos clientId={client.id} />}
           {active === "relatorio" && <RelatorioTab client={client} />}
