@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Client, ClientReport } from "@/lib/types";
@@ -35,6 +35,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const lastSaved = useRef<string>("");
 
   // Anotações da planejadora (entram no relatório) — persistidas em clients.info
   const [anotacoes, setAnotacoes] = useState(client.info ?? "");
@@ -69,6 +70,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
     setCurrent(null);
     setTitulo(tituloPadrao);
     setHtml("");
+    lastSaved.current = "";
     setSnapshot(null);
     setProjData(null);
   };
@@ -77,9 +79,20 @@ export default function RelatorioTab({ client }: { client: Client }) {
     setCurrent(r);
     setTitulo(r.titulo);
     setHtml(r.content_html ?? "");
+    lastSaved.current = r.content_html ?? "";
     setSnapshot(r.snapshot ?? null);
     setProjData(null);
   };
+
+  // Auto-salva edições (debounce) quando há um relatório atual
+  useEffect(() => {
+    if (!current || html === lastSaved.current) return;
+    const t = setTimeout(async () => {
+      await supabase.from("client_reports").update({ content_html: html, titulo }).eq("id", current.id);
+      lastSaved.current = html;
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [html, titulo, current]);
 
   // Calcula o resumo da projeção (eventos) — usado quando "incluir projeção" está ligado
   const computeProjecao = async () => {
@@ -146,11 +159,22 @@ export default function RelatorioTab({ client }: { client: Client }) {
       toast.error("Erro ao gerar", { description: (data as any)?.error || error?.message });
       return;
     }
-    setHtml((data as any).html);
-    setSnapshot((data as any).snapshot ?? null);
+    const gHtml = (data as any).html as string;
+    const gSnap = (data as any).snapshot ?? null;
+    // Auto-salva como rascunho na hora (não perde o crédito gerado)
+    const { data: saved } = await supabase
+      .from("client_reports")
+      .insert({ client_id: client.id, titulo, content_html: gHtml, snapshot: gSnap, created_by: user?.id ?? null })
+      .select("*")
+      .single();
+    setGenerating(false);
+    setHtml(gHtml);
+    lastSaved.current = gHtml;
+    setSnapshot(gSnap);
     setProjData(projecao);
-    setCurrent(null);
-    toast.success("Relatório gerado", { description: "Edite à vontade e clique em Salvar." });
+    setCurrent((saved as ClientReport) ?? null);
+    loadReports();
+    toast.success("Relatório gerado e salvo como rascunho", { description: "Pode editar agora ou depois." });
   };
 
   const salvar = async () => {
@@ -179,6 +203,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
       }
     }
     setSaving(false);
+    lastSaved.current = html;
     loadReports();
   };
 
