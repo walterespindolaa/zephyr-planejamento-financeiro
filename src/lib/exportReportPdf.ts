@@ -1,7 +1,8 @@
 /**
  * Exporta o relatório como PDF via janela de impressão do navegador.
- * Pagina nativamente (A4) e insere capa (1ª página) e contracapa (última).
- * Cabeçalho com logo + barra verde-musgo no topo e no rodapé, repetidos em cada página.
+ * Capa e contracapa em página inteira (limpas). As páginas de conteúdo têm,
+ * em cada página, o logo + barra verde-musgo no topo e barra no rodapé,
+ * usando thead/tfoot (que se repetem automaticamente na impressão).
  */
 const MOSS = "#3b4a2b"; // verde musgo escuro
 
@@ -20,15 +21,11 @@ export function exportReportPdf(opts: {
     return;
   }
 
-  const origin = window.location.origin;
-  const logoUrl = `${origin}/zephyr-logo-dark.png`;
+  const logoUrl = `${window.location.origin}/zephyr-logo-dark.png`;
 
   const capa = capaUrl
     ? `<section class="full-page"><img src="${capaUrl}" /></section>`
-    : `<section class="full-page cover-fallback">
-         <h1>${titulo}</h1><p>${clienteNome}</p>
-       </section>`;
-
+    : `<section class="full-page cover-fallback"><h1>${titulo}</h1><p>${clienteNome}</p></section>`;
   const contracapa = contracapaUrl
     ? `<section class="full-page"><img src="${contracapaUrl}" /></section>`
     : "";
@@ -37,36 +34,38 @@ export function exportReportPdf(opts: {
 <html lang="pt-BR"><head><meta charset="utf-8" />
 <title>${titulo} — ${clienteNome}</title>
 <style>
-  @page { size: A4; margin: 22mm 14mm 16mm 14mm; }
-  * { box-sizing: border-box; }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { margin: 0; font-family: Inter, 'DM Sans', sans-serif; color: #14201a; }
 
-  /* Cabeçalho e rodapé fixos — repetem em cada página impressa, dentro das margens */
-  .run-header { position: fixed; top: 0; left: 0; right: 0; }
-  .run-header .bar { height: 6px; background: ${MOSS}; }
-  .run-header img { height: 22px; margin: 9px 0 0 14mm; display: block; }
-  .run-footer { position: fixed; bottom: 0; left: 0; right: 0; }
-  .run-footer .bar { height: 5px; background: ${MOSS}; }
-
-  /* Capa/contracapa ocupam a página inteira, sem margem nem cabeçalho */
-  .full-page { position: relative; width: 210mm; height: 297mm; margin: -22mm -14mm -16mm -14mm; page-break-after: always; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  /* Capa / contracapa — página inteira, sem cabeçalho */
+  .full-page { width: 210mm; height: 297mm; page-break-after: always; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .full-page img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cover-fallback { flex-direction: column; background: #0e1714; color: #fff; }
-  .cover-fallback h1 { font-size: 32px; margin: 0 0 8px; padding: 0 24px; text-align: center; }
+  .cover-fallback h1 { font-size: 30px; margin: 0 0 8px; padding: 0 24px; text-align: center; }
 
-  .content h2 { font-size: 18px; margin: 18px 0 6px; color: #14633e; }
-  .content h3 { font-size: 15px; margin: 12px 0 4px; }
+  /* Conteúdo — thead/tfoot repetem em cada página */
+  table.report { width: 100%; border-collapse: collapse; }
+  .hd-cell, .ft-cell { padding: 0; }
+  .hd .bar { height: 7px; background: ${MOSS}; }
+  .hd img { height: 20px; margin: 9px 0 9px 20mm; display: block; }
+  .ft { position: relative; height: 14mm; }
+  .ft .bar { position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background: ${MOSS}; }
+  .body-cell { padding: 5mm 20mm 0 20mm; }
+
+  .content h2 { font-size: 16px; margin: 18px 0 6px; color: #14633e; }
+  .content h3 { font-size: 14px; margin: 12px 0 4px; }
   .content p { font-size: 12px; line-height: 1.6; margin: 6px 0; }
   .content ul, .content ol { font-size: 12px; line-height: 1.6; padding-left: 20px; }
 </style></head>
 <body>
-  <div class="run-header"><div class="bar"></div><img src="${logoUrl}" alt="Zephyr" /></div>
-  <div class="run-footer"><div class="bar"></div></div>
-
   ${capa}
-  <main class="content">${summaryHtml ?? ""}${contentHtml}</main>
+  <table class="report">
+    <thead><tr><td class="hd-cell"><div class="hd"><div class="bar"></div><img src="${logoUrl}" alt="Zephyr" /></div></td></tr></thead>
+    <tfoot><tr><td class="ft-cell"><div class="ft"><div class="bar"></div></div></td></tr></tfoot>
+    <tbody><tr><td class="body-cell"><main class="content">${summaryHtml ?? ""}${contentHtml}</main></td></tr></tbody>
+  </table>
   ${contracapa}
-
   <script>
     window.onload = function () {
       var imgs = Array.prototype.slice.call(document.images);
