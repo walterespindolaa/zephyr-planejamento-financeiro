@@ -28,6 +28,7 @@ interface Acomp {
   responsavel_id: string | null;
   status: string;
   data_evento: string | null;
+  valor: number | null;
 }
 
 const TIPOS = [
@@ -67,6 +68,7 @@ export default function Acompanhamentos() {
   const [fTipo, setFTipo] = useState("todos");
   const [fStatus, setFStatus] = useState("todos");
   const [fResp, setFResp] = useState("todos");
+  const [fValorMin, setFValorMin] = useState(0);
   const [q, setQ] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
@@ -87,10 +89,11 @@ export default function Acompanhamentos() {
         if (fTipo !== "todos" && a.tipo !== fTipo) return false;
         if (fStatus !== "todos" && a.status !== fStatus) return false;
         if (fResp !== "todos" && a.responsavel_id !== fResp) return false;
+        if (fValorMin > 0 && Number(a.valor || 0) < fValorMin) return false;
         if (q && !(clientById[a.client_id] ?? "").toLowerCase().includes(q.toLowerCase())) return false;
         return true;
-      }),
-    [items, fTipo, fStatus, fResp, q, clientById]
+      }).sort((a, b) => Number(b.valor || 0) - Number(a.valor || 0)),
+    [items, fTipo, fStatus, fResp, fValorMin, q, clientById]
   );
 
   const counts = useMemo(() => {
@@ -156,6 +159,13 @@ export default function Acompanhamentos() {
           placeholder="Responsável"
           options={[{ v: "todos", l: "Todos responsáveis" }, ...advisors.map((a) => ({ v: a.user_id, l: a.full_name ?? "—" }))]}
         />
+        <Input
+          type="number"
+          className="h-9 w-36"
+          placeholder="Valor mín R$"
+          value={fValorMin || ""}
+          onChange={(e) => setFValorMin(Number(e.target.value) || 0)}
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -176,6 +186,11 @@ export default function Acompanhamentos() {
                   </Link>
                   {a.titulo && <p className="text-xs text-muted-foreground">{a.titulo}</p>}
                 </div>
+                {Number(a.valor) > 0 && (
+                  <span className="shrink-0 text-sm font-semibold text-primary">
+                    {Number(a.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                  </span>
+                )}
                 <Select value={a.responsavel_id ?? ""} onValueChange={(v) => patch(a.id, { responsavel_id: v })}>
                   <SelectTrigger className="h-8 w-36 text-xs">
                     <SelectValue placeholder="Responsável" />

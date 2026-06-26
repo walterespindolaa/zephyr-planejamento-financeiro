@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { Users, UserCog, LogOut, Menu, X, ClipboardList, ListChecks } from "lucide-react";
+import { Users, UserCog, LogOut, Menu, X, ClipboardList, ListChecks, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ZephyrLogo } from "@/components/brand/ZephyrLogo";
 import { ROLE_LABEL } from "@/lib/types";
@@ -15,6 +15,7 @@ export default function AppLayout() {
   const expanded = hover;
 
   const nav = [
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: false },
     { to: "/", label: "Clientes", icon: Users, end: true },
     { to: "/atividades", label: "Atividades", icon: ListChecks, end: false },
     { to: "/acompanhamentos", label: "Acompanhamentos", icon: ClipboardList, end: false },

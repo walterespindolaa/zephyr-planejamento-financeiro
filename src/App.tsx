@@ -9,6 +9,7 @@ import AppLayout from "@/components/layout/AppLayout";
 
 const Login = lazy(() => import("@/pages/Login"));
 const TrocarSenha = lazy(() => import("@/pages/TrocarSenha"));
+const Painel = lazy(() => import("@/pages/Painel"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
@@ -55,6 +56,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Painel />} />
                   <Route path="clientes/novo" element={<NovoCliente />} />
                   <Route path="clientes/:id" element={<ClienteDetalhe />} />
                   <Route path="acompanhamentos" element={<Acompanhamentos />} />
