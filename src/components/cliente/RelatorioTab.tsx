@@ -14,7 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, Eye } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -176,6 +182,13 @@ export default function RelatorioTab({ client }: { client: Client }) {
     loadReports();
   };
 
+  const excluirReport = async (id: string) => {
+    await supabase.from("client_reports").delete().eq("id", id);
+    if (current?.id === id) novoRelatorio();
+    loadReports();
+    toast.success("Relatório excluído");
+  };
+
   const getChartSvg = () =>
     (document.querySelector("#zephyr-cenarios-host svg") as SVGElement | null)?.outerHTML;
 
@@ -266,8 +279,8 @@ export default function RelatorioTab({ client }: { client: Client }) {
               <Button variant="outline" size="sm" onClick={salvar} disabled={saving}>
                 <Save className="mr-1.5 h-4 w-4" /> Salvar
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowPreview((p) => !p)} disabled={!html}>
-                <Eye className="mr-1.5 h-4 w-4" /> {showPreview ? "Editar" : "Pré-visualizar"}
+              <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} disabled={!html}>
+                <Eye className="mr-1.5 h-4 w-4" /> Pré-visualizar
               </Button>
               <Button variant="outline" size="sm" onClick={exportarMain} disabled={!html}>
                 <FileDown className="mr-1.5 h-4 w-4" /> PDF
@@ -300,22 +313,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
             </div>
           )}
 
-          {showPreview ? (
-            <div
-              className="zephyr-prose rounded-lg border bg-white p-5"
-              dangerouslySetInnerHTML={{
-                __html: composeFullReport({
-                  titulo,
-                  nome: client.nome,
-                  contentHtml: html,
-                  snapshot,
-                  chartSvg: getChartSvg(),
-                }),
-              }}
-            />
-          ) : (
-            <ReportEditor value={html} onChange={setHtml} />
-          )}
+          <ReportEditor value={html} onChange={setHtml} />
           <p className="text-xs text-muted-foreground">
             Este é o relatório oficial do cliente (salvável). Use "Pré-visualizar" para ver o
             layout final (texto + cards por seção), igual ao PDF.
@@ -329,12 +327,11 @@ export default function RelatorioTab({ client }: { client: Client }) {
           <CardContent className="space-y-2 py-5">
             <h3 className="font-semibold">Relatórios salvos</h3>
             {reports.map((r) => (
-              <button
+              <div
                 key={r.id}
-                onClick={() => abrir(r)}
-                className="flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left hover:border-primary/40"
+                className="flex w-full items-center justify-between rounded-lg border px-3 py-2.5 hover:border-primary/40"
               >
-                <div className="flex items-center gap-3">
+                <button onClick={() => abrir(r)} className="flex flex-1 items-center gap-3 text-left">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{r.titulo}</p>
@@ -342,13 +339,42 @@ export default function RelatorioTab({ client }: { client: Client }) {
                       {format(new Date(r.updated_at), "dd/MM/yy HH:mm")}
                     </p>
                   </div>
+                </button>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{r.status === "finalizado" ? "Finalizado" : "Rascunho"}</Badge>
+                  <button onClick={() => excluirReport(r.id)} title="Excluir">
+                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  </button>
                 </div>
-                <Badge variant="outline">{r.status === "finalizado" ? "Finalizado" : "Rascunho"}</Badge>
-              </button>
+              </div>
             ))}
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de pré-visualização */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-hidden p-0">
+          <DialogHeader className="flex flex-row items-center justify-between border-b px-5 py-3">
+            <DialogTitle className="text-base">Pré-visualização do relatório</DialogTitle>
+            <Button size="sm" onClick={exportarMain}>
+              <FileDown className="mr-1.5 h-4 w-4" /> Baixar PDF
+            </Button>
+          </DialogHeader>
+          <div
+            className="zephyr-prose max-h-[75vh] overflow-y-auto bg-white p-6"
+            dangerouslySetInnerHTML={{
+              __html: composeFullReport({
+                titulo,
+                nome: client.nome,
+                contentHtml: html,
+                snapshot,
+                chartSvg: getChartSvg(),
+              }),
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
