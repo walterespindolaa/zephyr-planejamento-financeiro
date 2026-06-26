@@ -248,15 +248,9 @@ export function composeFullReport(opts: {
   const hoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
   const header = `
-    <div style="text-align:center;padding:18px;border:1px solid #e3e8e5;border-radius:16px;background:#f3f6f4;margin-bottom:14px;">
-      <div style="font-size:18px;font-weight:800;color:#14201a;">${titulo}</div>
+    <div style="text-align:center;padding:14px 18px;margin-bottom:14px;">
+      <div style="font-size:19px;font-weight:800;color:#14201a;">${titulo}</div>
       <div style="font-size:13px;color:#6b7d74;margin-top:4px;">${hoje}</div>
-      <div style="display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:#e1efe7;color:#14633e;font-size:11px;font-weight:600;">✦ Gerado com IA · Zephyr</div>
-    </div>`;
-
-  const aviso = `
-    <div style="border:1px solid #f0d9a0;background:#fdf6e6;border-radius:12px;padding:12px 14px;font-size:11px;color:#7a6320;margin-bottom:16px;">
-      <strong>ATENÇÃO:</strong> Este relatório é gerado com apoio de inteligência artificial com base nas informações fornecidas. Possui caráter informativo e educacional e não constitui recomendação de investimento, consultoria financeira ou garantia de resultados.
     </div>`;
 
   const primeiroNome = (nome || "o cliente").split(" ")[0];
@@ -277,5 +271,5 @@ export function composeFullReport(opts: {
     }
   }
 
-  return header + aviso + sintese + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
+  return header + sintese + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
 }
