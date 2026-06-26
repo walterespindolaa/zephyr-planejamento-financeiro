@@ -136,21 +136,47 @@ export function buildInstitutionalSections(s: Record<string, any> | null): strin
   const veiculos = bens.filter((b) => b.tipo === "veiculo").reduce((t, b) => t + Number(b.valor || 0), 0);
   const empresa = bens.filter((b) => b.tipo === "empresa").reduce((t, b) => t + Number(b.valor || 0), 0);
   const outros = bens.filter((b) => !["imovel", "veiculo", "empresa"].includes(b.tipo)).reduce((t, b) => t + Number(b.valor || 0), 0);
+  const investTotal = nacional + exterior;
   const cats: [string, number][] = [
-    ["Investimento Nacional", nacional],
-    ["Investimento Exterior", exterior],
+    ["Investimentos", investTotal],
     ["Imóveis", imoveis],
     ["Veículos", veiculos],
     ["Empresa/Participações", empresa],
     ["Outros bens", outros],
   ].filter(([, v]) => v > 0) as [string, number][];
   const totalPat = cats.reduce((t, [, v]) => t + v, 0) || 1;
-  const patRows = cats
-    .map(([nome, v]) => tr([nome, fmtBRL(v), ((v / totalPat) * 100).toFixed(1) + "%"]))
+
+  const bar = (label: string, value: number, total: number) => {
+    const pct = total > 0 ? (value / total) * 100 : 0;
+    return `<div style="margin:7px 0;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;"><span>${label}</span><span style="color:#6b7d74;">${fmtBRL(value)} · ${pct.toFixed(1)}%</span></div>
+      <div style="height:7px;background:#eef1ef;border-radius:99px;margin-top:3px;"><div style="height:7px;width:${pct.toFixed(1)}%;background:#16a34a;border-radius:99px;"></div></div>
+    </div>`;
+  };
+
+  // por classe (investimentos)
+  const classeLabels: Record<string, string> = {
+    renda_fixa: "Renda Fixa", renda_variavel: "Renda Variável", fii: "Fundos Imobiliários",
+    exterior: "Exterior", cripto: "Cripto", outro: "Outros",
+  };
+  const porClasse: Record<string, number> = {};
+  invs.forEach((i) => {
+    const k = i.classe || "outro";
+    porClasse[k] = (porClasse[k] || 0) + Number(i.valor || 0);
+  });
+  const classeBars = Object.entries(porClasse)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => bar(classeLabels[k] || k, v, investTotal))
     .join("");
+
   const patrimonio =
-    secTitle("Patrimônio por Categoria") +
-    tableHtml(["Categoria", "Valor", "% do total"], patRows + tr([`<strong>Total</strong>`, `<strong>${fmtBRL(totalPat)}</strong>`, "100%"]));
+    secTitle("Patrimônio") +
+    card(
+      `<div style="font-size:20px;font-weight:800;color:#14201a;">${fmtBRL(totalPat)} <span style="font-size:11px;color:#6b7d74;font-weight:400;">patrimônio total</span></div>
+       <div style="font-size:10px;color:#6b7d74;text-transform:uppercase;margin:12px 0 4px;">Por categoria</div>
+       ${cats.map(([n, v]) => bar(n, v, totalPat)).join("")}
+       ${investTotal > 0 ? `<div style="font-size:10px;color:#6b7d74;text-transform:uppercase;margin:14px 0 4px;">Investimentos por classe</div>${classeBars}` : ""}`
+    );
 
   // 3) Projeção do Planejamento (3 cenários, ano a ano)
   const inputs: CenarioInputs = {
@@ -199,6 +225,10 @@ export function buildDisclaimerPage(): string {
       inflação com base no IPCA. Todas as medidas pressupõem rebalanceamento periódico e reinvestimento de proventos.
       A Zephyr não se responsabiliza por decisões tomadas com base neste material.
     </p>
+    <div style="margin-top:24px;border:1px solid #e3e8e5;border-radius:14px;padding:20px;background:#f3f6f4;text-align:center;">
+      <div style="font-size:14px;font-style:italic;color:#14201a;">"O sucesso financeiro não é sobre quanto você ganha, mas sobre o que você faz crescer com constância."</div>
+      <div style="font-size:11px;color:#14633e;font-weight:700;margin-top:8px;">— Zephyr · Planejamento Financeiro</div>
+    </div>
   </div>`;
 }
 
@@ -229,6 +259,12 @@ export function composeFullReport(opts: {
       <strong>ATENÇÃO:</strong> Este relatório é gerado com apoio de inteligência artificial com base nas informações fornecidas. Possui caráter informativo e educacional e não constitui recomendação de investimento, consultoria financeira ou garantia de resultados.
     </div>`;
 
+  const primeiroNome = (nome || "o cliente").split(" ")[0];
+  const sintese = card(
+    `<div style="font-size:12px;font-weight:700;color:#14633e;margin-bottom:4px;">✦ Síntese Executiva</div>
+     <div style="font-size:11px;color:#4a5650;line-height:1.6;">Avaliação da viabilidade do plano de vida de ${primeiroNome}: capacidade de poupança, objetivos, aposentadoria e renda ideal. Este relatório identifica os gaps entre o que ${primeiroNome} deseja e o que é possível hoje, e aponta os ajustes para viabilizar o planejamento.</div>`
+  );
+
   let body = "";
   for (const sec of splitSections(contentHtml)) {
     body += sec.html;
@@ -241,5 +277,5 @@ export function composeFullReport(opts: {
     }
   }
 
-  return header + aviso + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
+  return header + aviso + sintese + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
 }
