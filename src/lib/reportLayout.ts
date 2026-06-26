@@ -251,6 +251,7 @@ export function buildInstitutionalSections(s: Record<string, any> | null): strin
 // ── Apresentação "pocket" (versão enxuta e visual para o cliente) ───────────
 export interface PocketOpts {
   indicadores: boolean;
+  objetivos: boolean;
   saude: boolean;
   cenarios: boolean;
   evolucao: boolean;
@@ -303,6 +304,22 @@ export function buildPocketHtml(s: Record<string, any> | null, opts: PocketOpts,
      ${linhaSaude("Aposentadoria", "Em acompanhamento", GREEN)}`
   );
 
+  // Objetivos com barra de progresso
+  const objs = (s.objetivos || []) as any[];
+  const objetivos = !opts.objetivos || !objs.length ? "" : card(
+    `<div style="font-size:11px;color:#6b7d74;text-transform:uppercase;margin-bottom:8px;">Objetivos de Vida</div>
+     ${objs.map((o) => {
+       const meta = Number(o.valor) || 0;
+       const ac = Number(o.acumulado) || 0;
+       const pct = meta > 0 ? Math.min(100, (ac / meta) * 100) : 0;
+       return `<div style="margin-bottom:10px;">
+         <div style="display:flex;justify-content:space-between;font-size:12px;"><span><strong>${o.nome || "Objetivo"}</strong></span><span style="color:#6b7d74;">${o.aporteMensal ? fmtBRL(o.aporteMensal) + "/mês" : ""}</span></div>
+         <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7d74;margin:2px 0;"><span>${fmtBRL(ac)}</span><span>${fmtBRL(meta)} · ${pct.toFixed(0)}%</span></div>
+         <div style="height:6px;background:#eef1ef;border-radius:99px;"><div style="height:6px;width:${pct.toFixed(0)}%;background:#16a34a;border-radius:99px;"></div></div>
+       </div>`;
+     }).join("")}`
+  );
+
   const cenarios = !opts.cenarios ? "" : cenariosCard(s);
   const evolucao = opts.evolucao && s.comparacao ? buildComparacao(s.comparacao) : "";
   const protecao = opts.protecao ? buildProtecao(s) : "";
@@ -313,7 +330,7 @@ export function buildPocketHtml(s: Record<string, any> | null, opts: PocketOpts,
      ${passos.map((p) => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #eef1ef;">→ <strong>${p.titulo || p.tipo}</strong>${p.valor ? ` · ${fmtBRL(p.valor)}` : ""}</div>`).join("")}`
   );
 
-  return hero + indicadores + saude + cenarios + evolucao + protecao + proximos;
+  return hero + indicadores + objetivos + saude + cenarios + evolucao + protecao + proximos;
 }
 
 export function buildProtecao(s: Record<string, any> | null): string {

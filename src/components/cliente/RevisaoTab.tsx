@@ -102,6 +102,7 @@ export default function RevisaoTab({ client }: { client: Client }) {
       return;
     }
     setGenerating(true);
+    const tId = toast.loading("Gerando acompanhamento… pode navegar, ele continua em segundo plano.");
     const { data, error } = await supabase.functions.invoke("relatorio-estrategia", {
       body: {
         clientId: client.id,
@@ -111,7 +112,7 @@ export default function RevisaoTab({ client }: { client: Client }) {
     });
     if (error || (data as any)?.error) {
       setGenerating(false);
-      toast.error("Erro ao gerar", { description: (data as any)?.error || error?.message });
+      toast.error("Erro ao gerar", { id: tId, description: (data as any)?.error || error?.message });
       return;
     }
     await supabase.from("client_reports").insert({
@@ -123,6 +124,7 @@ export default function RevisaoTab({ client }: { client: Client }) {
     });
     setGenerating(false);
     toast.success("Acompanhamento gerado e salvo", {
+      id: tId,
       description: "Abra a aba Relatório para editar e baixar o PDF.",
     });
     load();

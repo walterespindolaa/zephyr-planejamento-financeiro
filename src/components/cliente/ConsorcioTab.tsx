@@ -27,18 +27,28 @@ export default function ConsorcioTab() {
   const r = useMemo(() => {
     const financiado = Math.max(0, valor - entrada);
     const jm = Math.pow(1 + jurosAno / 100, 1 / 12) - 1;
+
+    // Price (parcela fixa)
     const parcFin = pricePMT(financiado, jm, prazo);
     const totalFin = parcFin * prazo + entrada;
     const jurosFin = totalFin - valor;
 
-    // Consórcio: crédito = valor; custo = valor + taxa adm + fundo reserva, diluído no prazo
+    // SAC (amortização constante)
+    const amort = prazo > 0 ? financiado / prazo : 0;
+    const parcInicialSAC = amort + financiado * jm;
+    const parcFinalSAC = amort + amort * jm;
+    const jurosSAC = jm * financiado * (prazo + 1) / 2;
+    const totalSAC = financiado + jurosSAC + entrada;
+
+    // Consórcio
     const custoConsorcio = valor * (1 + (taxaAdm + fundoReserva) / 100);
     const parcConsorcio = (custoConsorcio - lance) / prazo;
-    const totalConsorcio = custoConsorcio; // lance faz parte do total pago
+    const totalConsorcio = custoConsorcio;
     const custoExtraConsorcio = totalConsorcio - valor;
 
-    const diff = totalFin - totalConsorcio;
-    return { financiado, parcFin, totalFin, jurosFin, custoConsorcio, parcConsorcio, totalConsorcio, custoExtraConsorcio, diff };
+    const melhorFin = Math.min(totalFin, totalSAC);
+    const diff = melhorFin - totalConsorcio;
+    return { financiado, parcFin, totalFin, jurosFin, amort, parcInicialSAC, parcFinalSAC, jurosSAC, totalSAC, custoConsorcio, parcConsorcio, totalConsorcio, custoExtraConsorcio, diff };
   }, [valor, entrada, prazo, jurosAno, taxaAdm, fundoReserva, lance]);
 
   const consorcioMelhor = r.diff > 0;
@@ -66,14 +76,24 @@ export default function ConsorcioTab() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-3">
         <Card className="rounded-2xl border-l-4" style={{ borderLeftColor: "#b8860b" }}>
           <CardContent className="space-y-2 py-4">
-            <h5 className="text-sm font-bold" style={{ color: "#b8860b" }}>Financiamento (Price)</h5>
+            <h5 className="text-sm font-bold" style={{ color: "#b8860b" }}>Financiamento — Price</h5>
             <Linha k="Valor financiado" v={fmtBRL(r.financiado)} />
-            <Linha k="Parcela" v={`${fmtBRL(r.parcFin)}/mês`} />
+            <Linha k="Parcela (fixa)" v={`${fmtBRL(r.parcFin)}/mês`} />
             <Linha k="Total pago" v={fmtBRL(r.totalFin)} forte />
             <Linha k="Juros pagos" v={fmtBRL(r.jurosFin)} cor="#b23b32" />
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-l-4" style={{ borderLeftColor: "#c8861a" }}>
+          <CardContent className="space-y-2 py-4">
+            <h5 className="text-sm font-bold" style={{ color: "#c8861a" }}>Financiamento — SAC</h5>
+            <Linha k="Amortização" v={`${fmtBRL(r.amort)}/mês`} />
+            <Linha k="1ª parcela" v={fmtBRL(r.parcInicialSAC)} />
+            <Linha k="Última parcela" v={fmtBRL(r.parcFinalSAC)} />
+            <Linha k="Total pago" v={fmtBRL(r.totalSAC)} forte />
+            <Linha k="Juros pagos" v={fmtBRL(r.jurosSAC)} cor="#b23b32" />
           </CardContent>
         </Card>
         <Card className="rounded-2xl border-l-4" style={{ borderLeftColor: "#1c7a4d" }}>

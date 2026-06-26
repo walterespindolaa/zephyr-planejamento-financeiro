@@ -48,6 +48,19 @@ export default function ProtecaoSegurosTab({ clientId }: { clientId: string }) {
         custos de inventário/sucessão e o benefício fiscal do PGBL — tudo com os dados do cliente.
       </TabHint>
 
+      {/* Dados do cliente usados */}
+      <Card>
+        <CardContent className="py-4">
+          <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">Dados do cliente usados nesta simulação</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Kpi label="Patrimônio total" v={fmtBRL(fin.patrimonioTotal)} />
+            <Kpi label="Despesa mensal" v={fmtBRL(fin.despesaMensal)} />
+            <Kpi label="Dívidas" v={fmtBRL(fin.dividas)} />
+            <Kpi label="Renda mensal" v={fmtBRL(fin.receitaMensal)} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Índice de proteção */}
       <Card>
         <CardContent className="py-5">

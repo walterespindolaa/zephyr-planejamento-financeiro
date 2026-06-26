@@ -47,7 +47,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [baselineId, setBaselineId] = useState<string>("");
   const [showApres, setShowApres] = useState(false);
   const [pocket, setPocket] = useState<PocketOpts>({
-    indicadores: true, saude: true, cenarios: true, evolucao: true, proximos: true, protecao: true,
+    indicadores: true, objetivos: true, saude: true, cenarios: true, evolucao: true, proximos: true, protecao: true,
   });
   const lastSaved = useRef<string>("");
 
@@ -156,6 +156,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
 
   const gerar = async () => {
     setGenerating(true);
+    const tId = toast.loading("Gerando relatório… pode navegar pelo sistema, ele continua em segundo plano.");
     const baselineReport = baselineId ? reports.find((r) => r.id === baselineId) : null;
     let projecao = null;
     if (incluirProjecao && !baselineReport) {
@@ -176,7 +177,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
     const { data, error } = await supabase.functions.invoke("relatorio-estrategia", { body });
     setGenerating(false);
     if (error || (data as any)?.error) {
-      toast.error("Erro ao gerar", { description: (data as any)?.error || error?.message });
+      toast.error("Erro ao gerar", { id: tId, description: (data as any)?.error || error?.message });
       return;
     }
     const gHtml = (data as any).html as string;
@@ -194,7 +195,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
     setProjData(projecao);
     setCurrent((saved as ClientReport) ?? null);
     loadReports();
-    toast.success("Relatório gerado e salvo como rascunho", { description: "Pode editar agora ou depois." });
+    toast.success("Relatório gerado e salvo como rascunho", { id: tId, description: "Disponível em Relatórios salvos." });
   };
 
   const salvar = async () => {
@@ -456,6 +457,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
           <div className="space-y-2">
             {([
               ["indicadores", "Indicadores principais (KPIs)"],
+              ["objetivos", "Objetivos de vida (progresso)"],
               ["saude", "Painel de saúde do planejamento"],
               ["cenarios", "Cenários de aposentadoria"],
               ["evolucao", "Evolução (se for acompanhamento)"],
