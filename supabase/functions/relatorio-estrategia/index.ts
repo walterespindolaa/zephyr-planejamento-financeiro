@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const { data: cliente } = await sb.from("clients").select("*").eq("id", clientId).maybeSingle();
     if (!cliente) return json({ error: "Sem acesso a este cliente." }, 403);
 
-    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes, notesRes] = await Promise.all([
+    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes, notesRes, opsRes] = await Promise.all([
       sb.from("client_receitas").select("*").eq("client_id", clientId),
       sb.from("client_despesas").select("*").eq("client_id", clientId),
       sb.from("client_objetivos").select("*").eq("client_id", clientId),
@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
       sb.from("client_dependentes").select("*").eq("client_id", clientId),
       sb.from("firm_settings").select("ai_model").eq("id", 1).maybeSingle(),
       sb.from("client_notes").select("content, pinned").eq("client_id", clientId).order("pinned", { ascending: false }).limit(20),
+      sb.from("client_acompanhamentos").select("tipo, titulo, status, data_evento, valor").eq("client_id", clientId).eq("incluir_relatorio", true),
     ]);
 
     const receitas = recRes.data || [];
@@ -60,6 +61,9 @@ Deno.serve(async (req) => {
     const dependentes = depRes.data || [];
     const aiModel = cfgRes.data?.ai_model || "claude-sonnet-4-6";
     const notes = notesRes.data || [];
+    const proximosPassos = (opsRes.data || []).map((o: any) => ({
+      tipo: o.tipo, titulo: o.titulo, status: o.status, data: o.data_evento, valor: o.valor,
+    }));
 
     const sum = (arr: any[], f: (x: any) => number) => arr.reduce((s, x) => s + (f(x) || 0), 0);
     const mensal = (arr: any[], val: (x: any) => number) =>
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
       dependentes: dependentes.map((d) => ({ nome: d.nome, parentesco: d.parentesco, nascimento: d.data_nascimento })),
     };
     if (anotacoes) contextData.anotacoesPlanejadora = anotacoes;
+    if (proximosPassos.length) contextData.proximosPassos = proximosPassos;
     if (modo === "projecao" && projecao) contextData.projecao = projecao;
 
     let systemPrompt = `Voce e o planejador financeiro senior da Zephyr Investimentos (padrao CFP), escrevendo a analise "Estrategia de Subida" que sera ENTREGUE AO CLIENTE ${cliente.nome}. E um documento de consultoria premium, nao um relatorio automatico.
@@ -137,7 +142,11 @@ Abertura — paragrafo curto e pessoal, dando boas-vindas a ${cliente.nome}.
 USE OS DADOS ESPECIFICOS: cite as principais receitas pela descricao (campo receitas), os bens relevantes pelo nome (campo bens, com valor/divida/liquido e renda), e cada objetivo pelo nome com seu aporte. NAO generalize quando ha dado concreto.
 5. Aposentadoria — o topo. Compare os 3 cenarios (Realidade, Consumo, Viver de Renda) de forma narrativa.
 6. Renda Ideal e Gap — custo de vida + colchao + objetivos + aposentadoria vs. renda atual.
-7. Reflexao e Viabilidade — fechamento honesto e encorajador; proximo movimento concreto.`;
+7. Reflexao e Viabilidade — fechamento honesto e encorajador; proximo movimento concreto.${
+      proximosPassos.length
+        ? `\n8. Proximos Passos — apresente como uma secao final as oportunidades mapeadas pela planejadora (campo proximosPassos: consorcio, seguro, carta de credito, off-shore, previdencia…), explicando o porque de cada uma para a vida do cliente, de forma consultiva.`
+        : ""
+    }`;
 
     if (anotacoes) {
       systemPrompt += `

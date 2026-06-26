@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Pin, PinOff, Save } from "lucide-react";
+import { Trash2, Pin, PinOff, Save, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -120,6 +120,19 @@ export default function ClienteCRM({ client }: { client: Client }) {
     tasks.refetch();
   };
 
+  const copyWhatsapp = () => {
+    const pendentes = (tasks.data ?? []).filter((t) => !t.done);
+    if (pendentes.length === 0) {
+      toast.error("Sem pendências", { description: "Adicione tarefas para gerar a mensagem." });
+      return;
+    }
+    const primeiroNome = client.nome.split(" ")[0];
+    const linhas = pendentes.map((t) => `• ${t.title}`).join("\n");
+    const msg = `Olá, ${primeiroNome}! Tudo bem?\n\nPara a nossa próxima reunião de planejamento, preciso que você me envie/atualize:\n\n${linhas}\n\nAssim que possível, me encaminhe por aqui. Qualquer dúvida, estou à disposição. Obrigado(a)! 🙌`;
+    navigator.clipboard.writeText(msg);
+    toast.success("Mensagem copiada", { description: "Cole no WhatsApp do cliente e ajuste o que quiser." });
+  };
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {/* Coluna esquerda: info + tarefas */}
@@ -148,7 +161,12 @@ export default function ClienteCRM({ client }: { client: Client }) {
 
         <Card>
           <CardContent className="space-y-3 py-5">
-            <h3 className="font-semibold">Tarefas</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Pendências p/ próxima reunião</h3>
+              <Button size="sm" variant="outline" onClick={copyWhatsapp}>
+                <MessageCircle className="mr-1.5 h-4 w-4" /> WhatsApp
+              </Button>
+            </div>
             <div className="flex gap-2">
               <Input
                 placeholder="Nova tarefa…"
