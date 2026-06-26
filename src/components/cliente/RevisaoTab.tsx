@@ -6,6 +6,7 @@ import MoneyInput from "@/components/common/MoneyInput";
 import { fmtBRL } from "@/lib/cenarios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -235,6 +236,59 @@ export default function RevisaoTab({ client }: { client: Client }) {
                 </div>
               ))}
               {objs.length === 0 && <p className="py-2 text-sm text-muted-foreground">Nenhum objetivo cadastrado.</p>}
+
+              {/* Adicionar objetivo na revisão */}
+              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed p-2">
+                <Input
+                  className="h-9 flex-1 min-w-[140px]"
+                  placeholder="Novo objetivo (ex.: Galpão)"
+                  value={novoObj.nome}
+                  onChange={(e) => setNovoObj((n) => ({ ...n, nome: e.target.value }))}
+                />
+                <div className="w-36">
+                  <span className="block text-[10px] text-muted-foreground">Valor</span>
+                  <MoneyInput value={novoObj.valor} onCommit={(v) => setNovoObj((n) => ({ ...n, valor: v }))} />
+                </div>
+                <div className="w-36">
+                  <span className="block text-[10px] text-muted-foreground">Aporte/mês</span>
+                  <MoneyInput value={novoObj.aporte} onCommit={(v) => setNovoObj((n) => ({ ...n, aporte: v }))} />
+                </div>
+                <Button size="sm" variant="outline" onClick={addObjetivo}>Adicionar</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Receitas */}
+          <Card>
+            <CardContent className="space-y-2 py-5">
+              <h4 className="font-semibold">Receitas</h4>
+              <p className="text-xs text-muted-foreground">Atualize os valores que mudaram. Salva automaticamente.</p>
+              {recs.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
+                  <span className="flex-1 text-sm font-medium">{r.descricao || r.categoria || "—"}</span>
+                  <div className="w-40">
+                    <MoneyInput value={Number(r.valor) || 0} onCommit={(v) => updRec(r.id, v)} />
+                  </div>
+                </div>
+              ))}
+              {recs.length === 0 && <p className="py-2 text-sm text-muted-foreground">Nenhuma receita cadastrada.</p>}
+            </CardContent>
+          </Card>
+
+          {/* Despesas */}
+          <Card>
+            <CardContent className="space-y-2 py-5">
+              <h4 className="font-semibold">Despesas</h4>
+              <p className="text-xs text-muted-foreground">Atualize os valores que mudaram. Salva automaticamente.</p>
+              {desps.map((d) => (
+                <div key={d.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
+                  <span className="flex-1 text-sm font-medium">{d.descricao || d.categoria || "—"}</span>
+                  <div className="w-40">
+                    <MoneyInput value={Number(d.valor) || 0} onCommit={(v) => updDesp(d.id, v)} />
+                  </div>
+                </div>
+              ))}
+              {desps.length === 0 && <p className="py-2 text-sm text-muted-foreground">Nenhuma despesa cadastrada.</p>}
             </CardContent>
           </Card>
 
