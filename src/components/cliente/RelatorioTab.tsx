@@ -380,11 +380,13 @@ export default function RelatorioTab({ client }: { client: Client }) {
       {/* Modal de pré-visualização */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-hidden p-0">
-          <DialogHeader className="flex flex-row items-center justify-between border-b px-5 py-3">
-            <DialogTitle className="text-base">Pré-visualização do relatório</DialogTitle>
+          <DialogHeader className="flex flex-row items-center gap-3 border-b px-4 py-3 pr-12">
             <Button size="sm" onClick={exportarMain}>
               <FileDown className="mr-1.5 h-4 w-4" /> Baixar PDF
             </Button>
+            <DialogTitle className="flex-1 truncate text-sm text-muted-foreground">
+              Pré-visualização
+            </DialogTitle>
           </DialogHeader>
           <div
             className="zephyr-prose max-h-[75vh] overflow-y-auto bg-white p-6"
