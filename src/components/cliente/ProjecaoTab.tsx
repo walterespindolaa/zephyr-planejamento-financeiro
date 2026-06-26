@@ -8,6 +8,7 @@ import {
 } from "@/lib/financial_engine/life_projection";
 import { fmtBRL, fmtBRLshort } from "@/lib/cenarios";
 import MoneyInput from "@/components/common/MoneyInput";
+import TabHint from "./TabHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,6 +121,11 @@ export default function ProjecaoTab({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <TabHint>
+        Simule a evolução do patrimônio ao longo da vida. Ajuste as <strong>variáveis</strong> (é
+        só simulação, não altera o plano salvo) e adicione <strong>eventos</strong> (imóvel, filho,
+        viagem…) para ver o impacto na hora.
+      </TabHint>
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={Landmark} label="Patrimônio atual" value={fmtBRL(inputs.patrimonioInicial)} />

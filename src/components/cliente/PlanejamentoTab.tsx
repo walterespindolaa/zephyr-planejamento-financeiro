@@ -3,11 +3,18 @@ import AposentadoriaForm from "./AposentadoriaForm";
 import ObjetivosManager from "./ObjetivosManager";
 import BensManager from "./BensManager";
 import SaveBar from "./SaveBar";
+import TabHint from "./TabHint";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function PlanejamentoTab({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-4">
+      <TabHint>
+        Defina as <strong>premissas</strong> (taxas), a <strong>aposentadoria</strong>, os{" "}
+        <strong>objetivos</strong>, <strong>investimentos</strong>, <strong>bens</strong> e{" "}
+        <strong>dependentes</strong>. É a base dos 3 cenários e das projeções do relatório.
+        Preencha a aposentadoria para o gráfico de cenários aparecer.
+      </TabHint>
       <Section
         title="Aposentadoria"
         desc="Base dos 3 cenários do relatório (Realidade, Consumo, Viver de Renda)."

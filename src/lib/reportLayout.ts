@@ -248,6 +248,35 @@ export function buildInstitutionalSections(s: Record<string, any> | null): strin
   return fluxo + patrimonio + projecao + termos;
 }
 
+export function buildProtecao(s: Record<string, any> | null): string {
+  const p = s?.protecao;
+  if (!p) return "";
+  const linha = (nome: string, pct: number, valor: number, bold = false) =>
+    `<tr style="${bold ? "font-weight:700;" : ""}">
+       <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;">${nome}</td>
+       <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;text-align:center;">${pct.toFixed(2)}%</td>
+       <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;text-align:right;">${fmtBRL(valor)}</td>
+     </tr>`;
+  return (
+    secTitle("Proteção Patrimonial") +
+    `<p style="font-size:12px;line-height:1.6;margin:6px 0;">Em caso de falecimento inesperado, os herdeiros podem enfrentar custos de sucessão e inventário. Uma estratégia de proteção patrimonial com seguro de vida pode evitar essa pressão e preservar o legado familiar. Considerando um patrimônio estimado em <strong>${fmtBRL(p.imobilizado)}</strong> (imobilizado) + <strong>${fmtBRL(p.financeiro)}</strong> (ativo financeiro), estimamos os custos abaixo para a sucessão:</p>` +
+    `<table style="width:100%;border-collapse:collapse;margin:10px 0;">
+       <tr style="background:#f3f6f4;font-weight:700;">
+         <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;">Despesa</td>
+         <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;text-align:center;">Custo (%)</td>
+         <td style="padding:6px 10px;border:1px solid #d8ddd8;font-size:11px;text-align:right;">Custo (R$)</td>
+       </tr>
+       ${linha("ITCMD", p.itcmd.pct, p.itcmd.valor)}
+       ${linha("Advocatícias", p.advocaticias.pct, p.advocaticias.valor)}
+       ${linha("Cartorárias", p.cartorarias.pct, p.cartorarias.valor)}
+       ${linha("Total", p.custoTotalPct, p.custoTotal, true)}
+     </table>` +
+    `<p style="font-size:12px;margin:8px 0;"><strong>Capital sugerido em ferramenta sucessória: ${fmtBRL(p.capitalSucessorio)}</strong></p>` +
+    (p.prevObservacao ? `<p style="font-size:12px;margin:4px 0;">${p.prevObservacao}</p>` : "") +
+    `<p style="font-size:10px;color:#6b7d74;margin-top:8px;">Estimativas simplificadas para fins de planejamento. As aliquotas de ITCMD variam por estado e a estrutura sucessoria deve ser validada com assessoria juridica especializada.</p>`
+  );
+}
+
 export function buildDisclaimerPage(): string {
   return `<div style="page-break-before:always;padding-top:18mm;">
     <h2 style="font-size:17px;color:#14201a;border-bottom:2px solid #16a34a;padding-bottom:4px;">Disclaimer</h2>
@@ -309,5 +338,5 @@ export function composeFullReport(opts: {
     }
   }
 
-  return header + sintese + comparacaoBloco + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
+  return header + sintese + comparacaoBloco + body + buildInstitutionalSections(snapshot) + buildProtecao(snapshot) + buildDisclaimerPage();
 }

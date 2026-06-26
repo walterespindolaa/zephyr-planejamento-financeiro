@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import TabHint from "./TabHint";
+import InclusoesRelatorio from "./InclusoesRelatorio";
 
 interface Op {
   id: string;
@@ -82,7 +84,14 @@ export default function ClienteOportunidades({ clientId }: { clientId: string })
   };
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <TabHint>
+        Mapeie <strong>oportunidades</strong> (consórcio, seguro, carta de crédito, off-shore…) e
+        configure as <strong>inclusões do relatório</strong> (Proteção Patrimonial e Próximos
+        Passos). O que estiver marcado "no relatório" entra como recomendação para o cliente.
+      </TabHint>
+      <InclusoesRelatorio clientId={clientId} />
+      <Card>
       <CardContent className="space-y-4 py-5">
         <div>
           <h3 className="font-semibold">Oportunidades</h3>
@@ -171,6 +180,7 @@ export default function ClienteOportunidades({ clientId }: { clientId: string })
           ))}
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

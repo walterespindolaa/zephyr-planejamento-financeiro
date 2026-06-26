@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const { data: cliente } = await sb.from("clients").select("*").eq("id", clientId).maybeSingle();
     if (!cliente) return json({ error: "Sem acesso a este cliente." }, 403);
 
-    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes, notesRes, opsRes] = await Promise.all([
+    const [recRes, despRes, objRes, invRes, bensRes, apoRes, depRes, cfgRes, notesRes, opsRes, inclRes] = await Promise.all([
       sb.from("client_receitas").select("*").eq("client_id", clientId),
       sb.from("client_despesas").select("*").eq("client_id", clientId),
       sb.from("client_objetivos").select("*").eq("client_id", clientId),
@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       sb.from("firm_settings").select("ai_model").eq("id", 1).maybeSingle(),
       sb.from("client_notes").select("content, pinned").eq("client_id", clientId).order("pinned", { ascending: false }).limit(20),
       sb.from("client_acompanhamentos").select("tipo, titulo, status, data_evento, valor").eq("client_id", clientId).eq("incluir_relatorio", true),
+      sb.from("client_report_inclusoes").select("*").eq("client_id", clientId).maybeSingle(),
     ]);
 
     const receitas = recRes.data || [];
@@ -116,8 +117,33 @@ Deno.serve(async (req) => {
       })),
       dependentes: dependentes.map((d) => ({ nome: d.nome, parentesco: d.parentesco, nascimento: d.data_nascimento })),
     };
+    const incl: any = inclRes.data || {};
     if (anotacoes) contextData.anotacoesPlanejadora = anotacoes;
-    if (proximosPassos.length) contextData.proximosPassos = proximosPassos;
+    if (proximosPassos.length && incl.incluir_proximos_passos !== false) contextData.proximosPassos = proximosPassos;
+
+    // Proteção Patrimonial (sucessão) — bloco deterministico no relatorio
+    if (incl.incluir_protecao) {
+      const imob = Number(incl.patrimonio_imobilizado ?? patrimonioBens) || 0;
+      const fin = Number(incl.patrimonio_financeiro ?? patrimonioFinanceiro) || 0;
+      const tot = imob + fin;
+      const p = (x: number) => (Number(x) || 0) / 100;
+      const itcmd = tot * p(incl.itcmd_pct ?? 8);
+      const advoc = tot * p(incl.advocaticias_pct ?? 5);
+      const cart = tot * p(incl.cartorarias_pct ?? 2);
+      const custoTotal = itcmd + advoc + cart;
+      contextData.protecao = {
+        imobilizado: imob,
+        financeiro: fin,
+        total: tot,
+        itcmd: { pct: Number(incl.itcmd_pct ?? 8), valor: Math.round(itcmd) },
+        advocaticias: { pct: Number(incl.advocaticias_pct ?? 5), valor: Math.round(advoc) },
+        cartorarias: { pct: Number(incl.cartorarias_pct ?? 2), valor: Math.round(cart) },
+        custoTotalPct: Number(incl.itcmd_pct ?? 8) + Number(incl.advocaticias_pct ?? 5) + Number(incl.cartorarias_pct ?? 2),
+        custoTotal: Math.round(custoTotal),
+        capitalSucessorio: Number(incl.capital_sucessorio) || Math.round(custoTotal),
+        prevObservacao: incl.prev_observacao || null,
+      };
+    }
     if (modo === "projecao" && projecao) contextData.projecao = projecao;
 
     if (modo === "revisao" && baseline?.snapshot) {
@@ -151,8 +177,8 @@ VOZ E ESTILO (o mais importante):
 - Tom INSTITUCIONAL, profissional, sobrio e consultivo. Trate o cliente na 2a pessoa ("voce"), com clareza e objetividade.
 - NAO use analogias, metaforas nem linguagem figurada. PROIBIDO usar termos como "montanha", "subida", "trilha", "topo", "degrau", "motor", "jornada", "caminho ate la", "estrategia de subida". Linguagem direta, tecnica porem acessivel.
 - NAO escreva saudacoes do tipo "Bem-vindo a sua...". A abertura deve ser uma apresentacao profissional e neutra do documento.
-- TEXTO CORRIDO. Cada secao com 1 a 3 paragrafos conectados. Sem listas longas (no maximo um <ul> no documento).
-- Interprete cada numero (o que revela, o que permite, o que ajustar). Use o nome do cliente e dos dependentes com naturalidade. Portugues brasileiro, valores em R$.
+- TEXTO CORRIDO, porem ENXUTO. Cada secao com 1 a 2 paragrafos CURTOS (3 a 5 frases cada). Seja direto e objetivo — NAO encha linguica, evite redundancia e frases de efeito desnecessarias. Sem listas longas (no maximo um <ul> no documento).
+- Interprete cada numero (o que revela, o que permite, o que ajustar) de forma concisa. Use o nome do cliente e dos dependentes com naturalidade. Portugues brasileiro, valores em R$.
 - Principios aplicados sem citar autores: juros compostos, diversificacao, margem de seguranca, eficiencia tributaria, protecao e sucessao patrimonial.
 
 FORMATO DE SAIDA: HTML limpo, APENAS com <h2>, <h3>, <p>, <strong> (no maximo um <ul><li>). Sem markdown, sem <html>/<body>, sem estilos inline. Os KPIs, graficos e tabelas ja aparecem fora do texto — NAO recrie tabelas de numeros; INTERPRETE.

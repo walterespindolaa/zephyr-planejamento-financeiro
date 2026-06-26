@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Client, ClientReport } from "@/lib/types";
 import ReportEditor from "./ReportEditor";
 import CenariosChart from "./CenariosChart";
+import TabHint from "./TabHint";
 import { exportReportPdf } from "@/lib/exportReportPdf";
 import { buildProjectionHtml, fmtBRL, type CenarioInputs } from "@/lib/cenarios";
 import { composeFullReport } from "@/lib/reportLayout";
@@ -282,6 +283,11 @@ export default function RelatorioTab({ client }: { client: Client }) {
 
   return (
     <div className="space-y-4">
+      <TabHint>
+        Gere o relatório com IA a partir dos dados do cliente, <strong>edite o texto</strong>, e
+        baixe o PDF. Use as <strong>anotações</strong> abaixo para a IA incorporar o contexto de
+        vida. Tudo é salvo automaticamente como rascunho ao gerar.
+      </TabHint>
       {/* Anotações da planejadora */}
       <Card>
         <CardContent className="space-y-2 py-5">

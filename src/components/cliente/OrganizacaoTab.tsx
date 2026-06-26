@@ -1,5 +1,6 @@
 import CrudList from "./CrudList";
 import SaveBar from "./SaveBar";
+import TabHint from "./TabHint";
 import { Card, CardContent } from "@/components/ui/card";
 
 const CAT_RECEITA = [
@@ -30,6 +31,11 @@ const CAT_DESPESA = [
 export default function OrganizacaoTab({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-4">
+      <TabHint>
+        Registre as <strong>entradas e saídas</strong> mensais do cliente. A categoria padroniza
+        para os relatórios; a descrição é o que aparece para o cliente. Esses valores alimentam a
+        capacidade de poupança e o fluxo financeiro do relatório.
+      </TabHint>
       <Card>
         <CardContent className="space-y-3 py-5">
           <div>
