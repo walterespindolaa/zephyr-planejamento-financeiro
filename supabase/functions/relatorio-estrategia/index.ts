@@ -32,8 +32,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const clientId = body.clientId;
-    const modo = body.modo === "projecao" ? "projecao" : "principal";
+    const modo = ["projecao", "revisao"].includes(body.modo) ? body.modo : "principal";
     const projecao = body.projecao || null;
+    const baseline = body.baseline || null; // { snapshot, data } — marco zero p/ revisão
     if (!clientId) return json({ error: "clientId obrigatório" }, 400);
 
     const { data: cliente } = await sb.from("clients").select("*").eq("id", clientId).maybeSingle();
@@ -119,6 +120,29 @@ Deno.serve(async (req) => {
     if (proximosPassos.length) contextData.proximosPassos = proximosPassos;
     if (modo === "projecao" && projecao) contextData.projecao = projecao;
 
+    if (modo === "revisao" && baseline?.snapshot) {
+      const b = baseline.snapshot;
+      const delta = (a: number, c: number) => Math.round((a || 0) - (c || 0));
+      contextData.comparacao = {
+        periodo: { de: baseline.data || null, ate: new Date().toISOString().slice(0, 10) },
+        patrimonioFinanceiro: { antes: b.patrimonioFinanceiro || 0, agora: patrimonioFinanceiro, delta: delta(patrimonioFinanceiro, b.patrimonioFinanceiro) },
+        patrimonioBens: { antes: b.patrimonioBens || 0, agora: patrimonioBens, delta: delta(patrimonioBens, b.patrimonioBens) },
+        reservaEmergencia: { antes: b.reservaEmergencia || 0, agora: reservaEmergencia, delta: delta(reservaEmergencia, b.reservaEmergencia) },
+        capacidadePoupanca: { antes: b.capacidadePoupanca || 0, agora: capacidadePoupanca, delta: delta(capacidadePoupanca, b.capacidadePoupanca) },
+        receitaMediaMensal: { antes: b.receitaMediaMensal || 0, agora: receitaMensal, delta: delta(receitaMensal, b.receitaMediaMensal) },
+        despesaMediaMensal: { antes: b.despesaMediaMensal || 0, agora: despesaMensal, delta: delta(despesaMensal, b.despesaMediaMensal) },
+        objetivos: objetivos.map((o) => {
+          const ob = (b.objetivos || []).find((x: any) => x.nome === o.nome);
+          return {
+            nome: o.nome,
+            acumuladoAntes: ob?.acumulado || 0,
+            acumuladoAgora: o.valor_acumulado || 0,
+            poupadoNoPeriodo: Math.round((o.valor_acumulado || 0) - (ob?.acumulado || 0)),
+          };
+        }),
+      };
+    }
+
     let systemPrompt = `Voce e o planejador financeiro senior da Zephyr (padrao CFP), redigindo o relatorio de PLANEJAMENTO FINANCEIRO que sera ENTREGUE AO CLIENTE ${cliente.nome}. E um documento de consultoria patrimonial profissional e institucional, no padrao de wealth management / private banking.
 
 OBJETIVO: avaliar a viabilidade do planejamento financeiro do cliente — organizacao, objetivos, aposentadoria, renda ideal, protecao e sucessao patrimonial.
@@ -148,6 +172,12 @@ USE OS DADOS ESPECIFICOS: cite as principais receitas pela descricao (campo rece
         ? ` Inclua aqui, de forma consultiva, as oportunidades mapeadas pela planejadora (campo proximosPassos: consorcio, seguro, carta de credito, off-shore, previdencia…), explicando o porque de cada uma.`
         : ""
     }`;
+
+    if (modo === "revisao" && contextData.comparacao) {
+      systemPrompt += `
+
+ESTE E UM RELATORIO DE ACOMPANHAMENTO (REVISAO PERIODICA), nao um planejamento inicial. Use o campo "comparacao" para confrontar o planejamento anterior (marco zero, periodo ${contextData.comparacao.periodo.de}) com a situacao ATUAL. Logo apos a Apresentacao, adicione uma secao <h2>Acompanhamento — Evolucao no Periodo</h2> destacando, de forma analitica e institucional: (1) a EVOLUCAO PATRIMONIAL (patrimonio antes -> agora, com a variacao em R$ e o significado), (2) quanto foi EFETIVAMENTE POUPADO/ACUMULADO no periodo vs o planejado, (3) o PROGRESSO de cada objetivo (acumulado antes -> agora, citando pelo nome), (4) os GAPS que surgiram ou foram fechados, e (5) um PLANO DE ACAO concreto para o proximo periodo. O restante do documento segue a estrutura normal, ja considerando os dados atualizados.`;
+    }
 
     if (anotacoes) {
       systemPrompt += `

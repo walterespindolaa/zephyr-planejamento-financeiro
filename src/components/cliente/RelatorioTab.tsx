@@ -20,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sparkles, Save, FileDown, Plus, FileText, Loader2, Mountain, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -35,6 +42,7 @@ export default function RelatorioTab({ client }: { client: Client }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [baselineId, setBaselineId] = useState<string>("");
   const lastSaved = useRef<string>("");
 
   // Anotações da planejadora (entram no relatório) — persistidas em clients.info
@@ -142,8 +150,9 @@ export default function RelatorioTab({ client }: { client: Client }) {
 
   const gerar = async () => {
     setGenerating(true);
+    const baselineReport = baselineId ? reports.find((r) => r.id === baselineId) : null;
     let projecao = null;
-    if (incluirProjecao) {
+    if (incluirProjecao && !baselineReport) {
       projecao = await computeProjecao();
       if (!projecao) {
         setGenerating(false);
@@ -151,9 +160,14 @@ export default function RelatorioTab({ client }: { client: Client }) {
         return;
       }
     }
-    const { data, error } = await supabase.functions.invoke("relatorio-estrategia", {
-      body: { clientId: client.id, modo: projecao ? "projecao" : "principal", projecao },
-    });
+    const body = baselineReport
+      ? {
+          clientId: client.id,
+          modo: "revisao",
+          baseline: { snapshot: baselineReport.snapshot, data: (baselineReport.created_at || "").slice(0, 10) },
+        }
+      : { clientId: client.id, modo: projecao ? "projecao" : "principal", projecao };
+    const { data, error } = await supabase.functions.invoke("relatorio-estrategia", { body });
     setGenerating(false);
     if (error || (data as any)?.error) {
       toast.error("Erro ao gerar", { description: (data as any)?.error || error?.message });
@@ -313,12 +327,35 @@ export default function RelatorioTab({ client }: { client: Client }) {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
-            <Switch checked={incluirProjecao} onCheckedChange={setIncluirProjecao} />
-            <span className="flex items-center gap-1.5">
-              <Mountain className="h-4 w-4 text-primary" /> Incluir projeção de vida (eventos da aba Projeção)
-            </span>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+              <Switch checked={incluirProjecao} onCheckedChange={setIncluirProjecao} disabled={!!baselineId} />
+              <span className="flex items-center gap-1.5">
+                <Mountain className="h-4 w-4 text-primary" /> Incluir projeção de vida
+              </span>
+            </label>
+
+            {reports.some((r) => r.snapshot) && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Acompanhamento — comparar com:</span>
+                <Select value={baselineId || "none"} onValueChange={(v) => setBaselineId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="h-9 w-56">
+                    <SelectValue placeholder="Nenhum (novo planejamento)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum (novo planejamento)</SelectItem>
+                    {reports
+                      .filter((r) => r.snapshot)
+                      .map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {format(new Date(r.created_at), "dd/MM/yy")} · {r.titulo.slice(0, 24)}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           {snapshot && (
             <div className="space-y-4">

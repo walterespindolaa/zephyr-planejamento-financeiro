@@ -79,6 +79,42 @@ function cenariosCard(s: any): string {
   );
 }
 
+// ── Bloco de comparação (revisão / acompanhamento) ──────────────────────────
+function buildComparacao(comp: any): string {
+  if (!comp) return "";
+  const linha = (label: string, item: any) => {
+    const delta = Number(item?.delta) || 0;
+    const cor = delta < 0 ? "#b23b32" : "#1c7a4d";
+    return `<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;">${label}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;text-align:right;color:#6b7d74;">${fmtBRL(item?.antes || 0)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;text-align:right;">${fmtBRL(item?.agora || 0)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eef1ef;font-size:11px;text-align:right;font-weight:700;color:${cor};">${delta > 0 ? "+" : ""}${fmtBRL(delta)}</td>
+    </tr>`;
+  };
+  const objLinhas = (comp.objetivos || [])
+    .map((o: any) => linha(`Objetivo: ${o.nome}`, { antes: o.acumuladoAntes, agora: o.acumuladoAgora, delta: o.poupadoNoPeriodo }))
+    .join("");
+  const de = comp.periodo?.de ? new Date(comp.periodo.de + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+  return card(
+    `<div style="font-size:12px;font-weight:700;color:#14633e;margin-bottom:4px;">Acompanhamento — Evolução no período</div>
+     <div style="font-size:10px;color:#6b7d74;margin-bottom:8px;">Comparado ao marco zero de ${de}.</div>
+     <table style="width:100%;border-collapse:collapse;">
+       <tr style="background:#f3f6f4;">
+         <td style="padding:5px 8px;font-size:10px;color:#6b7d74;">Indicador</td>
+         <td style="padding:5px 8px;font-size:10px;color:#6b7d74;text-align:right;">Antes</td>
+         <td style="padding:5px 8px;font-size:10px;color:#6b7d74;text-align:right;">Agora</td>
+         <td style="padding:5px 8px;font-size:10px;color:#6b7d74;text-align:right;">Evolução</td>
+       </tr>
+       ${linha("Patrimônio financeiro", comp.patrimonioFinanceiro)}
+       ${linha("Patrimônio em bens", comp.patrimonioBens)}
+       ${linha("Reserva de emergência", comp.reservaEmergencia)}
+       ${linha("Capacidade de poupança/mês", comp.capacidadePoupanca)}
+       ${objLinhas}
+     </table>`
+  );
+}
+
 // ── Seções institucionais (estilo XP), geradas dos dados ────────────────────
 const secTitle = (t: string) =>
   `<h2 style="font-size:17px;color:#14201a;margin:22px 0 6px;border-bottom:2px solid #16a34a;padding-bottom:4px;">${t}</h2>`;
@@ -259,6 +295,8 @@ export function composeFullReport(opts: {
      <div style="font-size:11px;color:#4a5650;line-height:1.6;">Avaliação da viabilidade do plano de vida de ${primeiroNome}: capacidade de poupança, objetivos, aposentadoria e renda ideal. Este relatório identifica os gaps entre o que ${primeiroNome} deseja e o que é possível hoje, e aponta os ajustes para viabilizar o planejamento.</div>`
   );
 
+  const comparacaoBloco = snapshot?.comparacao ? buildComparacao(snapshot.comparacao) : "";
+
   let body = "";
   for (const sec of splitSections(contentHtml)) {
     body += sec.html;
@@ -271,5 +309,5 @@ export function composeFullReport(opts: {
     }
   }
 
-  return header + sintese + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
+  return header + sintese + comparacaoBloco + body + buildInstitutionalSections(snapshot) + buildDisclaimerPage();
 }
