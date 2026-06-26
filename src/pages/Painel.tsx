@@ -1,11 +1,54 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeam } from "@/hooks/useTeam";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { fmtBRL } from "@/lib/cenarios";
-import { Users, FileText, Handshake, CheckCircle2, CalendarClock, TrendingUp } from "lucide-react";
+import { Users, FileText, Handshake, CheckCircle2, CalendarClock, TrendingUp, CalendarRange } from "lucide-react";
+import {
+  subDays, subMonths, startOfMonth, endOfMonth, startOfYear,
+} from "date-fns";
+
+const PERIODOS = [
+  { v: "7d", l: "Últimos 7 dias" },
+  { v: "15d", l: "Últimos 15 dias" },
+  { v: "30d", l: "Últimos 30 dias" },
+  { v: "mes", l: "Este mês" },
+  { v: "mes_passado", l: "Mês passado" },
+  { v: "3m", l: "3 meses" },
+  { v: "6m", l: "6 meses" },
+  { v: "12m", l: "12 meses" },
+  { v: "ano", l: "Este ano" },
+  { v: "inicio", l: "Desde o início" },
+  { v: "personalizado", l: "Personalizado" },
+];
+
+function calcRange(p: string, cFrom: string, cTo: string): { from: Date | null; to: Date } {
+  const now = new Date();
+  switch (p) {
+    case "7d": return { from: subDays(now, 7), to: now };
+    case "15d": return { from: subDays(now, 15), to: now };
+    case "30d": return { from: subDays(now, 30), to: now };
+    case "mes": return { from: startOfMonth(now), to: now };
+    case "mes_passado": { const lm = subMonths(now, 1); return { from: startOfMonth(lm), to: endOfMonth(lm) }; }
+    case "3m": return { from: subMonths(now, 3), to: now };
+    case "6m": return { from: subMonths(now, 6), to: now };
+    case "12m": return { from: subMonths(now, 12), to: now };
+    case "ano": return { from: startOfYear(now), to: now };
+    case "personalizado":
+      return { from: cFrom ? new Date(cFrom + "T00:00:00") : null, to: cTo ? new Date(cTo + "T23:59:59") : now };
+    default: return { from: null, to: now }; // início
+  }
+}
 
 const TIPO_LABEL: Record<string, string> = {
   consorcio: "Consórcio", seguro: "Seguro", carta_credito: "Carta de crédito",
@@ -27,16 +70,20 @@ function prettyName(n?: string | null): string {
 export default function Painel() {
   const { data: team = [] } = useTeam();
   const nameById = useMemo(() => Object.fromEntries(team.map((t) => [t.user_id, t.full_name])), [team]);
+  const [periodo, setPeriodo] = useState("mes");
+  const [cFrom, setCFrom] = useState("");
+  const [cTo, setCTo] = useState("");
+  const range = useMemo(() => calcRange(periodo, cFrom, cTo), [periodo, cFrom, cTo]);
 
   const { data } = useQuery({
     queryKey: ["painel"],
     queryFn: async () => {
       const [cli, rep, acomp, tasks, notes] = await Promise.all([
         supabase.from("clients").select("id, status, assessor_id"),
-        supabase.from("client_reports").select("client_id"),
-        supabase.from("client_acompanhamentos").select("tipo, status, valor, client_id"),
-        supabase.from("client_tasks").select("done, due_date"),
-        supabase.from("client_notes").select("tipo"),
+        supabase.from("client_reports").select("client_id, created_at"),
+        supabase.from("client_acompanhamentos").select("tipo, status, valor, client_id, created_at"),
+        supabase.from("client_tasks").select("done, due_date, created_at"),
+        supabase.from("client_notes").select("tipo, created_at"),
       ]);
       return {
         clients: (cli.data as any[]) || [],
@@ -50,18 +97,28 @@ export default function Painel() {
 
   const agg = useMemo(() => {
     if (!data) return null;
+    const inRange = (d: string | null) => {
+      if (!d) return false;
+      const t = new Date(d);
+      return (!range.from || t >= range.from) && t <= range.to;
+    };
+    const reports = data.reports.filter((r) => inRange(r.created_at));
+    const acompAll = data.acomp.filter((a) => inRange(a.created_at));
+    const tasks = data.tasks.filter((t) => inRange(t.created_at));
+    const notes = data.notes.filter((n) => inRange(n.created_at));
+
     const clientAssessor: Record<string, string> = {};
     data.clients.forEach((c) => (clientAssessor[c.id] = c.assessor_id || "—"));
     const ativos = data.clients.filter((c) => c.status === "ativo").length;
     const leads = data.clients.filter((c) => c.status === "lead").length;
 
-    const abertas = data.acomp.filter((a) => ABERTAS.includes(a.status));
-    const fechadas = data.acomp.filter((a) => a.status === "executado");
+    const abertas = acompAll.filter((a) => ABERTAS.includes(a.status));
+    const fechadas = acompAll.filter((a) => a.status === "executado");
     const valorMesa = abertas.reduce((s, a) => s + Number(a.valor || 0), 0);
     const valorFechado = fechadas.reduce((s, a) => s + Number(a.valor || 0), 0);
 
     const porTipo: Record<string, { n: number; valor: number }> = {};
-    data.acomp.forEach((a) => {
+    acompAll.forEach((a) => {
       const k = a.tipo || "outro";
       porTipo[k] = porTipo[k] || { n: 0, valor: 0 };
       porTipo[k].n++;
@@ -69,13 +126,13 @@ export default function Painel() {
     });
 
     const reunioesPorTipo: Record<string, number> = {};
-    data.notes.forEach((n) => {
+    notes.forEach((n) => {
       reunioesPorTipo[n.tipo] = (reunioesPorTipo[n.tipo] || 0) + 1;
     });
 
     // por assessor
     const repByClient: Record<string, number> = {};
-    data.reports.forEach((r) => (repByClient[r.client_id] = (repByClient[r.client_id] || 0) + 1));
+    reports.forEach((r) => (repByClient[r.client_id] = (repByClient[r.client_id] || 0) + 1));
     const porAssessor: Record<string, { clientes: number; planejamentos: number; oport: number; valorMesa: number }> = {};
     data.clients.forEach((c) => {
       const a = c.assessor_id || "—";
@@ -83,31 +140,53 @@ export default function Painel() {
       porAssessor[a].clientes++;
       porAssessor[a].planejamentos += repByClient[c.id] || 0;
     });
-    data.acomp.forEach((a) => {
+    acompAll.forEach((a) => {
       const ass = clientAssessor[a.client_id] || "—";
       porAssessor[ass] = porAssessor[ass] || { clientes: 0, planejamentos: 0, oport: 0, valorMesa: 0 };
       porAssessor[ass].oport++;
       if (ABERTAS.includes(a.status)) porAssessor[ass].valorMesa += Number(a.valor || 0);
     });
 
-    const pendentes = data.tasks.filter((t) => !t.done).length;
-    const atrasadas = data.tasks.filter((t) => !t.done && t.due_date && new Date(t.due_date) < new Date()).length;
+    const pendentes = tasks.filter((t) => !t.done).length;
+    const atrasadas = tasks.filter((t) => !t.done && t.due_date && new Date(t.due_date) < new Date()).length;
 
     return {
       totalClientes: data.clients.length, ativos, leads,
-      planejamentos: data.reports.length,
+      planejamentos: reports.length,
       oportAbertas: abertas.length, valorMesa, oportFechadas: fechadas.length, valorFechado,
       porTipo, reunioesPorTipo, porAssessor, pendentes, atrasadas,
     };
-  }, [data]);
+  }, [data, range]);
 
   if (!agg) return <p className="text-muted-foreground">Carregando…</p>;
 
   return (
     <div className="mx-auto max-w-screen-2xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral da operação de planejamento.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Visão geral da operação de planejamento.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {periodo === "personalizado" && (
+            <>
+              <Input type="date" className="h-9 w-36" value={cFrom} onChange={(e) => setCFrom(e.target.value)} />
+              <span className="text-muted-foreground">→</span>
+              <Input type="date" className="h-9 w-36" value={cTo} onChange={(e) => setCTo(e.target.value)} />
+            </>
+          )}
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="h-9 w-44">
+              <CalendarRange className="mr-1.5 h-4 w-4 text-primary" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIODOS.map((p) => (
+                <SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* KPIs */}
