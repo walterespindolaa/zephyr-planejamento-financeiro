@@ -67,9 +67,14 @@ Deno.serve(async (req) => {
       tipo: o.tipo, titulo: o.titulo, status: o.status, data: o.data_evento, valor: o.valor,
     }));
 
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const vigente = (x: any) =>
+      (!x.data_inicio || x.data_inicio <= hojeISO) && (!x.data_fim || x.data_fim >= hojeISO);
     const sum = (arr: any[], f: (x: any) => number) => arr.reduce((s, x) => s + (f(x) || 0), 0);
-    const mensal = (arr: any[], val: (x: any) => number) =>
-      sum(arr.filter((x) => x.recorrente), val) + sum(arr.filter((x) => !x.recorrente), val) / 12;
+    const mensal = (arr: any[], val: (x: any) => number) => {
+      const a = arr.filter(vigente);
+      return sum(a.filter((x) => x.recorrente), val) + sum(a.filter((x) => !x.recorrente), val) / 12;
+    };
 
     const receitaMensal = Math.round(mensal(receitas, (r) => Number(r.valor)));
     const despesaMensal = Math.round(mensal(despesas, (d) => Number(d.valor)));
@@ -111,8 +116,8 @@ Deno.serve(async (req) => {
         prazo: o.data_objetivo, aporteMensal: o.aporte_mensal, frequencia: o.frequencia,
       })),
       investimentos: investimentos.map((i) => ({ nome: i.nome, classe: i.classe, tipo: i.tipo, valor: i.valor_atual, reserva: i.is_reserva_emergencia })),
-      receitas: receitas.map((r) => ({ categoria: r.categoria, descricao: r.descricao, valor: r.valor, mensal: r.recorrente })),
-      despesas: despesas.map((d) => ({ categoria: d.categoria, descricao: d.descricao, valor: d.valor, tipo: d.tipo, mensal: d.recorrente })),
+      receitas: receitas.map((r) => ({ categoria: r.categoria, descricao: r.descricao, valor: r.valor, mensal: r.recorrente, inicio: r.data_inicio, fim: r.data_fim, vigente: vigente(r) })),
+      despesas: despesas.map((d) => ({ categoria: d.categoria, descricao: d.descricao, valor: d.valor, tipo: d.tipo, mensal: d.recorrente, inicio: d.data_inicio, fim: d.data_fim, vigente: vigente(d) })),
       bens: bens.map((b) => ({
         nome: b.nome, tipo: b.tipo, valor: b.valor, divida: b.divida_vinculada,
         liquido: Number(b.valor) - Number(b.divida_vinculada || 0), geraRenda: b.gera_renda, renda: b.valor_renda,
@@ -193,6 +198,7 @@ Apresentacao — paragrafo profissional e neutro sobre o proposito do documento 
 4. Reserva de Emergencia — reserva ideal (6-12 meses) vs. ${brl(reservaEmergencia)} atuais.
 
 USE OS DADOS ESPECIFICOS: cite as principais receitas pela descricao (campo receitas), os bens relevantes pelo nome (campo bens, com valor/divida/liquido e renda) e cada objetivo pelo nome com seu aporte. NAO generalize quando ha dado concreto.
+RECEITAS/DESPESAS COM PRAZO: alguns itens tem vigencia determinada (campos "inicio" e "fim" no formato AAAA-MM-DD). Quando um item relevante termina numa data (ex.: financiamento que se encerra, salario/beneficio temporario), MENCIONE isso e explique o impacto no fluxo futuro — uma despesa que acaba LIBERA capacidade de poupanca a partir daquela data; uma receita temporaria que termina REDUZ a renda futura e deve ser planejada. Itens ja vencidos (vigente=false) NAO entram nas medias atuais.
 5. Aposentadoria e Longo Prazo — compare os 3 cenarios (Realidade, Consumo do Patrimonio, Preservacao/Viver de Renda) de forma analitica.
 6. Renda Ideal e Gap Financeiro — custo de vida + reserva + objetivos + aposentadoria vs. renda atual.
 7. Conclusao e Proximos Passos — fechamento profissional, parecer de viabilidade e recomendacoes concretas.${

@@ -33,8 +33,10 @@ export default function OrganizacaoTab({ clientId }: { clientId: string }) {
     <div className="space-y-4">
       <TabHint>
         Registre as <strong>entradas e saídas</strong> mensais do cliente. A categoria padroniza
-        para os relatórios; a descrição é o que aparece para o cliente. Esses valores alimentam a
-        capacidade de poupança e o fluxo financeiro do relatório.
+        para os relatórios; a descrição é o que aparece para o cliente. Use <strong>"A partir de"</strong> e{" "}
+        <strong>"Até"</strong> para itens com <strong>prazo determinado</strong> (ex.: um financiamento que
+        termina em 12/2028 ou um salário até certa data) — em branco significa sem prazo. Itens já vencidos
+        deixam de contar na capacidade de poupança.
       </TabHint>
       <Card>
         <CardContent className="space-y-3 py-5">
@@ -66,6 +68,8 @@ export default function OrganizacaoTab({ clientId }: { clientId: string }) {
               },
               { key: "valor", label: "Valor", type: "money", grow: 1.2 },
               { key: "recorrente", label: "Mensal?", type: "bool", grow: 0.5 },
+              { key: "data_inicio", label: "A partir de", type: "date", grow: 1 },
+              { key: "data_fim", label: "Até (opcional)", type: "date", grow: 1 },
             ]}
           />
         </CardContent>
@@ -113,6 +117,8 @@ export default function OrganizacaoTab({ clientId }: { clientId: string }) {
               },
               { key: "valor", label: "Valor", type: "money", grow: 1.2 },
               { key: "recorrente", label: "Mensal?", type: "bool", grow: 0.5 },
+              { key: "data_inicio", label: "A partir de", type: "date", grow: 1 },
+              { key: "data_fim", label: "Até (opcional)", type: "date", grow: 1 },
             ]}
           />
         </CardContent>
